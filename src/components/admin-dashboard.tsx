@@ -105,8 +105,19 @@ export default function AdminDashboard() {
   const [reportStudentId, setReportStudentId] = useState('')
   const [reportClassId, setReportClassId] = useState('')
   const [reportSubjectId, setReportSubjectId] = useState('')
+  const [reportDateFrom, setReportDateFrom] = useState('')
+  const [reportDateTo, setReportDateTo] = useState('')
   const [reportData, setReportData] = useState<unknown>(null)
   const [loadingReport, setLoadingReport] = useState(false)
+
+  // Clear report data when report type changes to prevent type mismatch crashes
+  const handleReportTypeChange = (newType: string) => {
+    setReportType(newType)
+    setReportData(null)
+    setReportStudentId('')
+    setReportClassId('')
+    setReportSubjectId('')
+  }
 
   // Form states for student dialog
   const [studentForm, setStudentForm] = useState({ username: '', password: '', name: '', classId: '', rollNo: '' })
@@ -329,12 +340,16 @@ export default function AdminDashboard() {
     setReportData(null)
     try {
       let data
+      const dateParams: { fromDate?: string; toDate?: string } = {}
+      if (reportDateFrom) dateParams.fromDate = reportDateFrom
+      if (reportDateTo) dateParams.toDate = reportDateTo
+
       if (reportType === 'student' && reportStudentId) {
-        data = await reportsAPI.getStudentReport(reportStudentId)
+        data = await reportsAPI.getStudentReport(reportStudentId, dateParams)
       } else if (reportType === 'class' && reportClassId) {
-        data = await reportsAPI.getClassReport(reportClassId)
+        data = await reportsAPI.getClassReport(reportClassId, dateParams)
       } else if (reportType === 'subject' && reportSubjectId) {
-        data = await reportsAPI.getSubjectReport(reportSubjectId)
+        data = await reportsAPI.getSubjectReport(reportSubjectId, dateParams)
       } else {
         toast.error('Please select the required filters')
         setLoadingReport(false)
@@ -770,7 +785,7 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   <div>
                     <Label>Report Type</Label>
-                    <Select value={reportType} onValueChange={setReportType}>
+                    <Select value={reportType} onValueChange={handleReportTypeChange}>
                       <SelectTrigger className="w-full sm:w-[220px] h-10 mt-1">
                         <SelectValue />
                       </SelectTrigger>
@@ -780,6 +795,27 @@ export default function AdminDashboard() {
                         <SelectItem value="subject">Subject Report</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>From Date</Label>
+                      <Input
+                        type="date"
+                        value={reportDateFrom}
+                        onChange={(e) => setReportDateFrom(e.target.value)}
+                        className="h-10 mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label>To Date</Label>
+                      <Input
+                        type="date"
+                        value={reportDateTo}
+                        onChange={(e) => setReportDateTo(e.target.value)}
+                        className="h-10 mt-1"
+                      />
+                    </div>
                   </div>
 
                   {reportType === 'student' && (

@@ -21,3 +21,31 @@ Stage Summary:
 - Added ErrorBoundary component for graceful error recovery
 - All backend APIs verified working
 - The app should now load properly in the browser
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix Subject Report crash and add from/to date range filter to reports
+
+Work Log:
+- Diagnosed Subject Report crash: when changing report type dropdown, old reportData was not cleared, causing type mismatch (e.g., SubjectReport receiving StudentReportData)
+- Fixed by adding handleReportTypeChange that clears reportData, reportStudentId, reportClassId, and reportSubjectId on type change
+- Added from/to date range inputs to the Reports tab in admin dashboard
+- Updated API client (src/lib/api.ts) to accept dateRange parameter with fromDate/toDate for all three report types
+- Updated all three report API routes to read fromDate/toDate query params and filter tests by date range:
+  - /api/reports/student/[studentId]/route.ts
+  - /api/reports/class/[classId]/route.ts
+  - /api/reports/subject/[subjectId]/route.ts
+- Added dateRange field to all report response objects
+- Added DateRangeBadge component to report-view.tsx to display date range in generated reports
+- Added dateRange field to StudentReportData, ClassReportData, and SubjectReportData interfaces
+- Fixed eslint warnings (removed unused eslint-disable directives)
+- Ran lint check - all clean
+- Verified dev server compiles without errors
+
+Stage Summary:
+- Subject Report crash fixed by clearing report data on type change
+- From/to date range filter added to all three report types (Student, Class, Subject)
+- Date range filter works both in UI and backend API routes
+- Generated reports show date range badge when filters are applied
+- All code passes lint checks

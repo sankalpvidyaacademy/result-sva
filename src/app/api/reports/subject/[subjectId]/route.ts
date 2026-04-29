@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ subjectId: string }> }
 ) {
   try {
     const { subjectId } = await params;
+    const { searchParams } = new URL(request.url);
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
 
     const subject = await db.subject.findUnique({
       where: { id: subjectId },
@@ -24,12 +27,22 @@ export async function GET(
       );
     }
 
-    // Get all tests for this subject
+    // Get all tests for this subject, filtered by date range
     const today = new Date().toISOString().split('T')[0];
+    const dateFilter: { lte: string; gte?: string } = { lte: today };
+    if (fromDate && toDate) {
+      dateFilter.gte = fromDate;
+      dateFilter.lte = toDate;
+    } else if (fromDate) {
+      dateFilter.gte = fromDate;
+    } else if (toDate) {
+      dateFilter.lte = toDate;
+    }
+
     const tests = await db.test.findMany({
       where: {
         subjectId,
-        date: { lte: today },
+        date: dateFilter,
       },
       orderBy: { date: 'asc' },
       include: {
@@ -85,6 +98,7 @@ export async function GET(
         totalMaxMarks,
         percentage,
         testMarks,
+        rank: 0,
       };
     });
 
@@ -128,8 +142,8 @@ export async function GET(
         date: test.date,
         maxMarks: test.maxMarks,
         averageMarks: avg,
-        highestMarks,
-        lowestMarks,
+        highestMarks: highest,
+        lowestMarks: lowest,
         studentsAttempted: marksList.length,
         passCount,
         passPercentage,
@@ -173,6 +187,7 @@ export async function GET(
         },
         testStatistics,
         students: studentResults,
+        dateRange: fromDate || toDate ? { from: fromDate || null, to: toDate || null } : null,
       },
     });
   } catch (error) {

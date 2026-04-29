@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ studentId: string }> }
 ) {
   try {
     const { studentId } = await params;
+    const { searchParams } = new URL(request.url);
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
 
     const student = await db.student.findUnique({
       where: { id: studentId },
@@ -36,12 +39,22 @@ export async function GET(
       );
     }
 
-    // Get all completed tests for the class
+    // Get all completed tests for the class, filtered by date range
     const today = new Date().toISOString().split('T')[0];
+    const dateFilter: { lte: string; gte?: string } = { lte: today };
+    if (fromDate && toDate) {
+      dateFilter.gte = fromDate;
+      dateFilter.lte = toDate;
+    } else if (fromDate) {
+      dateFilter.gte = fromDate;
+    } else if (toDate) {
+      dateFilter.lte = toDate;
+    }
+
     const tests = await db.test.findMany({
       where: {
         classId: student.classId,
-        date: { lte: today },
+        date: dateFilter,
       },
       orderBy: { date: 'asc' },
       include: {
@@ -192,6 +205,7 @@ export async function GET(
         },
         subjectSummary: Object.values(subjectSummary),
         testDetails,
+        dateRange: fromDate || toDate ? { from: fromDate || null, to: toDate || null } : null,
       },
     });
   } catch (error) {

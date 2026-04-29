@@ -193,15 +193,27 @@ export const resultsAPI = {
 
 // ===== Reports API =====
 export const reportsAPI = {
-  getStudentReport: async (studentId: string) => {
-    return fetchAPI(`/reports/student/${studentId}`)
+  getStudentReport: async (studentId: string, dateRange?: { fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams()
+    if (dateRange?.fromDate) params.set('fromDate', dateRange.fromDate)
+    if (dateRange?.toDate) params.set('toDate', dateRange.toDate)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return fetchAPI(`/reports/student/${studentId}${query}`)
   },
 
-  getClassReport: async (classId: string) => {
-    return fetchAPI(`/reports/class/${classId}`)
+  getClassReport: async (classId: string, dateRange?: { fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams()
+    if (dateRange?.fromDate) params.set('fromDate', dateRange.fromDate)
+    if (dateRange?.toDate) params.set('toDate', dateRange.toDate)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return fetchAPI(`/reports/class/${classId}${query}`)
   },
 
-  getSubjectReport: async (subjectId: string) => {
-    return fetchAPI(`/reports/subject/${subjectId}`)
+  getSubjectReport: async (subjectId: string, dateRange?: { fromDate?: string; toDate?: string }) => {
+    const params = new URLSearchParams()
+    if (dateRange?.fromDate) params.set('fromDate', dateRange.fromDate)
+    if (dateRange?.toDate) params.set('toDate', dateRange.toDate)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return fetchAPI(`/reports/subject/${subjectId}${query}`)
   },
 }

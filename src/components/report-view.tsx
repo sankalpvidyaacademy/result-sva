@@ -41,6 +41,7 @@ interface StudentReportData {
     percentage: number
     grade: string
   }[]
+  dateRange?: { from: string | null; to: string | null } | null
 }
 
 interface ClassReportData {
@@ -73,6 +74,7 @@ interface ClassReportData {
     rank: number
     subjectMarks?: Record<string, number>
   }[]
+  dateRange?: { from: string | null; to: string | null } | null
 }
 
 interface SubjectReportData {
@@ -109,6 +111,12 @@ interface SubjectReportData {
     rank: number
     testMarks: { testId: string; testName: string; date: string; marks: number; maxMarks: number }[]
   }[]
+  dateRange?: { from: string | null; to: string | null } | null
+}
+
+interface DateRangeInfo {
+  from: string | null
+  to: string | null
 }
 
 interface ReportViewProps {
@@ -143,6 +151,30 @@ function getPercentageColor(pct: number): string {
   if (pct >= 60) return '#0891b2'
   if (pct >= 40) return '#d97706'
   return '#dc2626'
+}
+
+// ===== Date Range Badge =====
+function DateRangeBadge({ dateRange }: { dateRange?: DateRangeInfo | null }) {
+  if (!dateRange || (!dateRange.from && !dateRange.to)) return null
+  const from = dateRange.from ? new Date(dateRange.from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Start'
+  const to = dateRange.to ? new Date(dateRange.to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Present'
+  return (
+    <div style={{
+      background: '#f0fdfa',
+      border: '1px solid #99f6e4',
+      borderRadius: '6px',
+      padding: '8px 14px',
+      fontSize: '12px',
+      color: '#0d9488',
+      marginBottom: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    }}>
+      <span style={{ fontWeight: 600 }}>Date Range:</span>
+      <span>{from} — {to}</span>
+    </div>
+  )
 }
 
 // ===== Shared Header =====
@@ -224,13 +256,14 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 // ===== Student Report =====
 function StudentReport({ data }: { data: StudentReportData }) {
-  const { student, academicSummary, subjectSummary, testDetails } = data
+  const { student, academicSummary, subjectSummary, testDetails, dateRange } = data
 
   return (
     <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
       <ReportHeader title="Student Report" subtitle={`Student Performance Report — ${student.name}`} />
 
       <div style={{ padding: '24px 32px' }}>
+        <DateRangeBadge dateRange={dateRange} />
         {/* Student Info */}
         <div style={{
           display: 'grid',
@@ -333,7 +366,7 @@ function StudentReport({ data }: { data: StudentReportData }) {
 
 // ===== Class Report =====
 function ClassReport({ data }: { data: ClassReportData }) {
-  const { class: classInfo, subjects, statistics, subjectAverages, students, totalMaxMarks } = data
+  const { class: classInfo, subjects, statistics, subjectAverages, students, totalMaxMarks, dateRange } = data
   const gradeOrder = ['A+', 'A', 'B+', 'B', 'C', 'D', 'F']
 
   return (
@@ -341,6 +374,7 @@ function ClassReport({ data }: { data: ClassReportData }) {
       <ReportHeader title="Class Report" subtitle={`Class Performance Report — ${classInfo.name}`} />
 
       <div style={{ padding: '24px 32px' }}>
+        <DateRangeBadge dateRange={dateRange} />
         {/* Class Info */}
         <div style={{
           display: 'grid',
@@ -468,7 +502,7 @@ function ClassReport({ data }: { data: ClassReportData }) {
 
 // ===== Subject Report =====
 function SubjectReport({ data }: { data: SubjectReportData }) {
-  const { subject, totalTests, totalMaxMarks, statistics, testStatistics, students } = data
+  const { subject, totalTests, totalMaxMarks, statistics, testStatistics, students, dateRange } = data
   const gradeOrder = ['A+', 'A', 'B+', 'B', 'C', 'D', 'F']
 
   return (
@@ -476,6 +510,7 @@ function SubjectReport({ data }: { data: SubjectReportData }) {
       <ReportHeader title="Subject Report" subtitle={`${subject.name} — ${subject.class.name}`} />
 
       <div style={{ padding: '24px 32px' }}>
+        <DateRangeBadge dateRange={dateRange} />
         {/* Subject Info */}
         <div style={{
           display: 'grid',
