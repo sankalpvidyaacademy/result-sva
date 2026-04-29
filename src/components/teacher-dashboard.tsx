@@ -267,9 +267,9 @@ export default function TeacherDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Upcoming': return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">{status}</Badge>
-      case 'Today': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{status}</Badge>
-      case 'Completed': return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{status}</Badge>
+      case 'Upcoming': return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100">{status}</Badge>
+      case 'Today': return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100">{status}</Badge>
+      case 'Completed': return <Badge className="bg-muted text-muted-foreground hover:bg-muted">{status}</Badge>
       default: return <Badge>{status}</Badge>
     }
   }
@@ -290,14 +290,14 @@ export default function TeacherDashboard() {
       />
       <SidebarInset>
         {/* Top Header Bar */}
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-white px-4 sticky top-0 z-10">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-10">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <h2 className="text-sm font-semibold text-slate-800">{PAGE_TITLES[activeTab] || activeTab}</h2>
+          <h2 className="text-sm font-semibold text-foreground">{PAGE_TITLES[activeTab] || activeTab}</h2>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-4 bg-slate-50">
+        <main className="flex-1 px-4 py-4 bg-muted">
           {/* ===== MY SUBJECTS ===== */}
           {activeTab === 'subjects' && (
             <>
@@ -307,24 +307,24 @@ export default function TeacherDashboard() {
                     <Card key={sub.id} className="border-0 shadow-sm">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-teal-600" />
+                          <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                            <BookOpen className="w-5 h-5 text-primary" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-slate-800">{sub.subjectName}</h3>
-                            <p className="text-sm text-slate-500">{sub.className}</p>
+                            <h3 className="font-semibold text-foreground">{sub.subjectName}</h3>
+                            <p className="text-sm text-muted-foreground">{sub.className}</p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
                   {teacherData.subjects.length === 0 && (
-                    <p className="text-slate-400 text-center col-span-full py-12">No subjects assigned</p>
+                    <p className="text-muted-foreground text-center col-span-full py-12">No subjects assigned</p>
                   )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               )}
 
@@ -335,14 +335,14 @@ export default function TeacherDashboard() {
                 </CardHeader>
                 <CardContent>
                   {teacherTests.length === 0 ? (
-                    <p className="text-slate-400 text-center py-8">No tests scheduled yet</p>
+                    <p className="text-muted-foreground text-center py-8">No tests scheduled yet</p>
                   ) : (
                     <div className="space-y-3">
                       {teacherTests.map(test => (
-                        <div key={test.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                        <div key={test.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
                           <div>
                             <p className="font-medium text-sm">{test.name}</p>
-                            <p className="text-xs text-slate-500">{test.subject.name} • {test.class.name} • {test.date}</p>
+                            <p className="text-xs text-muted-foreground">{test.subject.name} • {test.class.name} • {test.date}</p>
                           </div>
                           {getStatusBadge(test.status)}
                         </div>
@@ -359,7 +359,7 @@ export default function TeacherDashboard() {
             <Card className="border-0 shadow-sm max-w-lg mx-auto">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <CalendarPlus className="w-5 h-5 text-teal-600" />
+                  <CalendarPlus className="w-5 h-5 text-primary" />
                   Schedule a Test
                 </CardTitle>
                 <CardDescription>Create a new test for your assigned class-subjects</CardDescription>
@@ -412,7 +412,7 @@ export default function TeacherDashboard() {
                       onChange={(e) => setScheduleForm(f => ({ ...f, date: e.target.value }))}
                       className="h-11"
                     />
-                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
                       Min 2 days gap between tests for the same class
                     </p>
@@ -433,7 +433,7 @@ export default function TeacherDashboard() {
                   <Button
                     onClick={handleScheduleTest}
                     disabled={scheduling}
-                    className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                    className="w-full h-11 bg-primary hover:bg-[#162E93] text-white"
                   >
                     {scheduling ? (
                       <>
@@ -455,7 +455,7 @@ export default function TeacherDashboard() {
               <Card className="border-0 shadow-sm mb-4">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <PenLine className="w-5 h-5 text-teal-600" />
+                    <PenLine className="w-5 h-5 text-primary" />
                     Enter Marks
                   </CardTitle>
                   <CardDescription>Select class, subject, and test to enter marks</CardDescription>
@@ -513,7 +513,7 @@ export default function TeacherDashboard() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">Student Marks</CardTitle>
-                      <Badge variant="secondary" className="bg-teal-50 text-teal-700">
+                      <Badge variant="secondary" className="bg-accent text-primary">
                         Max: {selectedTestMaxMarks}
                       </Badge>
                     </div>
@@ -521,10 +521,10 @@ export default function TeacherDashboard() {
                   <CardContent>
                     {loadingMarksData ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
                       </div>
                     ) : studentsInClass.length === 0 ? (
-                      <p className="text-slate-400 text-center py-8">No students in this class</p>
+                      <p className="text-muted-foreground text-center py-8">No students in this class</p>
                     ) : (
                       <>
                         <div className="overflow-x-auto">
@@ -561,7 +561,7 @@ export default function TeacherDashboard() {
                           <Button
                             onClick={handleSaveMarks}
                             disabled={savingMarks}
-                            className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                            className="bg-primary hover:bg-[#162E93] text-white"
                           >
                             {savingMarks ? (
                               <>
@@ -587,7 +587,7 @@ export default function TeacherDashboard() {
               <Card className="border-0 shadow-sm mb-4">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-teal-600" />
+                    <Trophy className="w-5 h-5 text-primary" />
                     Class Results
                   </CardTitle>
                 </CardHeader>
@@ -607,7 +607,7 @@ export default function TeacherDashboard() {
 
               {loadingResults ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : classResults && classResults.students.length > 0 ? (
                 <Card className="border-0 shadow-sm">
@@ -629,7 +629,7 @@ export default function TeacherDashboard() {
                             <TableRow key={student.studentId}>
                               <TableCell className="font-bold">
                                 {student.rank <= 3 ? (
-                                  <Badge className={student.rank === 1 ? 'bg-amber-100 text-amber-700' : student.rank === 2 ? 'bg-slate-100 text-slate-600' : 'bg-orange-100 text-orange-700'}>
+                                  <Badge className={student.rank === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : student.rank === 2 ? 'bg-muted text-muted-foreground' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}>
                                     #{student.rank}
                                   </Badge>
                                 ) : `#${student.rank}`}
@@ -638,18 +638,18 @@ export default function TeacherDashboard() {
                               <TableCell>{student.rollNo}</TableCell>
                               <TableCell>{student.totalMarks}/{student.totalMaxMarks}</TableCell>
                               <TableCell>
-                                <span className={student.percentage >= 60 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>
+                                <span className={student.percentage >= 60 ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
                                   {student.percentage}%
                                 </span>
                               </TableCell>
                               <TableCell>
                                 {student.weakSubject ? (
                                   <div className="flex items-center gap-1">
-                                    <TrendingDown className="w-3 h-3 text-rose-500" />
-                                    <span className="text-rose-600 text-xs">{student.weakSubject.subjectName} ({student.weakSubject.percentage}%)</span>
+                                    <TrendingDown className="w-3 h-3 text-destructive" />
+                                    <span className="text-destructive text-xs">{student.weakSubject.subjectName} ({student.weakSubject.percentage}%)</span>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-400 text-xs">N/A</span>
+                                  <span className="text-muted-foreground text-xs">N/A</span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -662,7 +662,7 @@ export default function TeacherDashboard() {
               ) : resultClassId ? (
                 <Card className="border-0 shadow-sm">
                   <CardContent className="py-12">
-                    <p className="text-slate-400 text-center">No results available for this class</p>
+                    <p className="text-muted-foreground text-center">No results available for this class</p>
                   </CardContent>
                 </Card>
               ) : null}
@@ -671,8 +671,8 @@ export default function TeacherDashboard() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-slate-100 py-3 mt-auto">
-          <p className="text-center text-xs text-slate-400">© 2024 Sankalp Result Management System</p>
+        <footer className="bg-background border-t border-border py-3 mt-auto">
+          <p className="text-center text-xs text-muted-foreground">© 2024 Sankalp Result Management System</p>
         </footer>
       </SidebarInset>
     </SidebarProvider>

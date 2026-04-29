@@ -128,18 +128,18 @@ export default function StudentDashboard() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Upcoming': return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">{status}</Badge>
-      case 'Today': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{status}</Badge>
-      case 'Completed': return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{status}</Badge>
+      case 'Upcoming': return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100">{status}</Badge>
+      case 'Today': return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100">{status}</Badge>
+      case 'Completed': return <Badge className="bg-muted text-muted-foreground hover:bg-muted">{status}</Badge>
       default: return <Badge>{status}</Badge>
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Upcoming': return <Clock className="w-4 h-4 text-sky-500" />
-      case 'Today': return <CalendarDays className="w-4 h-4 text-emerald-500" />
-      case 'Completed': return <CheckCircle2 className="w-4 h-4 text-slate-400" />
+      case 'Upcoming': return <Clock className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+      case 'Today': return <CalendarDays className="w-4 h-4 text-primary" />
+      case 'Completed': return <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
       default: return null
     }
   }
@@ -176,14 +176,14 @@ export default function StudentDashboard() {
       />
       <SidebarInset>
         {/* Top header bar */}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-white px-4 sticky top-0 z-10">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-10">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-sm font-semibold text-slate-800">{PAGE_TITLES[activeTab] || activeTab}</h1>
+          <h1 className="text-sm font-semibold text-foreground">{PAGE_TITLES[activeTab] || activeTab}</h1>
           {studentData && (
             <>
               <Separator orientation="vertical" className="mx-2 h-4" />
-              <Badge className="bg-teal-50 text-teal-700 border-teal-200 text-xs hover:bg-teal-50">
+              <Badge className="bg-accent text-primary border-primary/20 text-xs hover:bg-accent">
                 {studentData.class.name} • Roll #{studentData.rollNo}
               </Badge>
             </>
@@ -192,31 +192,31 @@ export default function StudentDashboard() {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-h-0">
-          <main className="flex-1 p-4 bg-slate-50">
+          <main className="flex-1 p-4 bg-muted">
             {/* ===== MY TESTS ===== */}
             {activeTab === 'tests' && (
               loadingTests ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : (
                 <div className="space-y-6">
                   {/* Today's Tests */}
                   {todayTests.length > 0 && (
                     <div>
-                      <h2 className="text-lg font-semibold text-emerald-700 mb-3 flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
                         <CalendarDays className="w-5 h-5" />
                         Today&apos;s Tests
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {todayTests.map(test => (
-                          <Card key={test.id} className="border-l-4 border-l-emerald-500 border-0 shadow-sm">
+                          <Card key={test.id} className="border-l-4 border-l-green-500 border-0 shadow-sm">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between">
                                 <div>
-                                  <h3 className="font-semibold text-slate-800">{test.name}</h3>
-                                  <p className="text-sm text-slate-500">{test.subject.name}</p>
-                                  <p className="text-xs text-slate-400 mt-1">Max Marks: {test.maxMarks}</p>
+                                  <h3 className="font-semibold text-foreground">{test.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{test.subject.name}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Max Marks: {test.maxMarks}</p>
                                 </div>
                                 {getStatusBadge(test.status)}
                               </div>
@@ -230,19 +230,19 @@ export default function StudentDashboard() {
                   {/* Upcoming Tests */}
                   {upcomingTests.length > 0 && (
                     <div>
-                      <h2 className="text-lg font-semibold text-sky-700 mb-3 flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-blue-700 dark:text-blue-400 mb-3 flex items-center gap-2">
                         <Clock className="w-5 h-5" />
                         Upcoming Tests
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {upcomingTests.map(test => (
-                          <Card key={test.id} className="border-l-4 border-l-sky-500 border-0 shadow-sm">
+                          <Card key={test.id} className="border-l-4 border-l-blue-500 border-0 shadow-sm">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between">
                                 <div>
-                                  <h3 className="font-semibold text-slate-800">{test.name}</h3>
-                                  <p className="text-sm text-slate-500">{test.subject.name}</p>
-                                  <p className="text-xs text-slate-400 mt-1">Date: {test.date} • Max: {test.maxMarks}</p>
+                                  <h3 className="font-semibold text-foreground">{test.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{test.subject.name}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Date: {test.date} • Max: {test.maxMarks}</p>
                                 </div>
                                 {getStatusIcon(test.status)}
                               </div>
@@ -256,19 +256,19 @@ export default function StudentDashboard() {
                   {/* Completed Tests */}
                   {completedTests.length > 0 && (
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-600 mb-3 flex items-center gap-2">
+                      <h2 className="text-lg font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5" />
                         Completed Tests
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {completedTests.map(test => (
-                          <Card key={test.id} className="border-l-4 border-l-slate-400 border-0 shadow-sm">
+                          <Card key={test.id} className="border-l-4 border-l-muted-foreground/40 border-0 shadow-sm">
                             <CardContent className="p-4">
                               <div className="flex items-start justify-between">
                                 <div>
-                                  <h3 className="font-semibold text-slate-700">{test.name}</h3>
-                                  <p className="text-sm text-slate-500">{test.subject.name}</p>
-                                  <p className="text-xs text-slate-400 mt-1">Date: {test.date} • Max: {test.maxMarks}</p>
+                                  <h3 className="font-semibold text-foreground">{test.name}</h3>
+                                  <p className="text-sm text-muted-foreground">{test.subject.name}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Date: {test.date} • Max: {test.maxMarks}</p>
                                 </div>
                                 {getStatusIcon(test.status)}
                               </div>
@@ -282,7 +282,7 @@ export default function StudentDashboard() {
                   {tests.length === 0 && (
                     <Card className="border-0 shadow-sm">
                       <CardContent className="py-12">
-                        <p className="text-slate-400 text-center">No tests scheduled yet</p>
+                        <p className="text-muted-foreground text-center">No tests scheduled yet</p>
                       </CardContent>
                     </Card>
                   )}
@@ -294,7 +294,7 @@ export default function StudentDashboard() {
             {activeTab === 'marks' && (
               loadingMarks ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : Object.keys(marksBySubject).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -302,7 +302,7 @@ export default function StudentDashboard() {
                     <Card key={subjectId} className="border-0 shadow-sm">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-teal-600" />
+                          <BookOpen className="w-4 h-4 text-primary" />
                           {data.subjectName}
                         </CardTitle>
                       </CardHeader>
@@ -311,15 +311,15 @@ export default function StudentDashboard() {
                           {data.entries.map((entry, idx) => {
                             const pct = entry.maxMarks > 0 ? Math.round((entry.marks / entry.maxMarks) * 100) : 0
                             return (
-                              <div key={idx} className="p-2 rounded-md bg-slate-50">
+                              <div key={idx} className="p-2 rounded-md bg-muted">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-sm font-medium text-slate-700">{entry.testName}</span>
-                                  <span className={`text-sm font-semibold ${pct >= 60 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <span className="text-sm font-medium text-foreground">{entry.testName}</span>
+                                  <span className={`text-sm font-semibold ${pct >= 60 ? 'text-primary' : 'text-destructive'}`}>
                                     {entry.marks}/{entry.maxMarks}
                                   </span>
                                 </div>
                                 <Progress value={pct} className="h-1.5" />
-                                <p className="text-xs text-slate-400 mt-1">{entry.date}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{entry.date}</p>
                               </div>
                             )
                           })}
@@ -331,7 +331,7 @@ export default function StudentDashboard() {
               ) : (
                 <Card className="border-0 shadow-sm">
                   <CardContent className="py-12">
-                    <p className="text-slate-400 text-center">No marks available yet</p>
+                    <p className="text-muted-foreground text-center">No marks available yet</p>
                   </CardContent>
                 </Card>
               )
@@ -341,35 +341,35 @@ export default function StudentDashboard() {
             {activeTab === 'results' && (
               loadingResults ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : studentResults ? (
                 <div className="space-y-4">
                   {/* Overall Performance Card */}
-                  <Card className="border-0 shadow-sm bg-gradient-to-r from-teal-50 to-emerald-50">
+                  <Card className="border-0 shadow-sm bg-accent">
                     <CardContent className="p-6">
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-2">
-                            <Award className="w-6 h-6 text-teal-600" />
+                            <Award className="w-6 h-6 text-primary" />
                           </div>
-                          <p className="text-2xl font-bold text-teal-700">#{studentResults.rank}</p>
-                          <p className="text-xs text-slate-500">Rank (of {studentResults.totalStudents})</p>
+                          <p className="text-2xl font-bold text-primary">#{studentResults.rank}</p>
+                          <p className="text-xs text-muted-foreground">Rank (of {studentResults.totalStudents})</p>
                         </div>
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-2">
-                            <BarChart3 className="w-6 h-6 text-emerald-600" />
+                            <BarChart3 className="w-6 h-6 text-primary" />
                           </div>
-                          <p className="text-2xl font-bold text-emerald-700">{studentResults.percentage}%</p>
-                          <p className="text-xs text-slate-500">Overall</p>
+                          <p className="text-2xl font-bold text-primary">{studentResults.percentage}%</p>
+                          <p className="text-xs text-muted-foreground">Overall</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-slate-700">{studentResults.totalMarks}</p>
-                          <p className="text-xs text-slate-500">Total Obtained</p>
+                          <p className="text-2xl font-bold text-foreground">{studentResults.totalMarks}</p>
+                          <p className="text-xs text-muted-foreground">Total Obtained</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-slate-500">{studentResults.totalMaxMarks}</p>
-                          <p className="text-xs text-slate-500">Total Maximum</p>
+                          <p className="text-2xl font-bold text-muted-foreground">{studentResults.totalMaxMarks}</p>
+                          <p className="text-xs text-muted-foreground">Total Maximum</p>
                         </div>
                       </div>
                     </CardContent>
@@ -377,13 +377,13 @@ export default function StudentDashboard() {
 
                   {/* Weak Subject Alert */}
                   {studentResults.weakSubject && (
-                    <Card className="border-0 shadow-sm bg-rose-50 border-l-4 border-l-rose-400">
+                    <Card className="border-0 shadow-sm bg-destructive/10 border-l-4 border-l-destructive/50">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                          <TrendingDown className="w-5 h-5 text-rose-500 shrink-0" />
+                          <TrendingDown className="w-5 h-5 text-destructive shrink-0" />
                           <div>
-                            <p className="font-semibold text-rose-700 text-sm">Weak Subject</p>
-                            <p className="text-rose-600 text-xs">{studentResults.weakSubject.subjectName} — {studentResults.weakSubject.percentage}%</p>
+                            <p className="font-semibold text-destructive text-sm">Weak Subject</p>
+                            <p className="text-destructive text-xs">{studentResults.weakSubject.subjectName} — {studentResults.weakSubject.percentage}%</p>
                           </div>
                         </div>
                       </CardContent>
@@ -402,19 +402,19 @@ export default function StudentDashboard() {
                           return (
                             <div
                               key={subject.subjectId}
-                              className={`p-4 rounded-lg border ${isWeak ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100'}`}
+                              className={`p-4 rounded-lg border ${isWeak ? 'bg-destructive/10 border-destructive/20' : 'bg-background border-border'}`}
                             >
                               <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-semibold text-sm text-slate-800">{subject.subjectName}</h4>
+                                <h4 className="font-semibold text-sm text-foreground">{subject.subjectName}</h4>
                                 {isWeak && (
-                                  <Badge className="bg-rose-100 text-rose-700 text-xs">Weak</Badge>
+                                  <Badge className="bg-destructive/10 text-destructive text-xs">Weak</Badge>
                                 )}
                               </div>
                               <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-muted-foreground">
                                   {subject.totalMarks}/{subject.totalMaxMarks}
                                 </span>
-                                <span className={`text-sm font-semibold ${subject.percentage >= 60 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <span className={`text-sm font-semibold ${subject.percentage >= 60 ? 'text-primary' : 'text-destructive'}`}>
                                   {subject.percentage}%
                                 </span>
                               </div>
@@ -423,7 +423,7 @@ export default function StudentDashboard() {
                               {/* Individual test marks */}
                               <div className="mt-3 space-y-1">
                                 {subject.tests.map(test => (
-                                  <div key={test.testId} className="flex items-center justify-between text-xs text-slate-500">
+                                  <div key={test.testId} className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>{test.testName}</span>
                                     <span>{test.marks}/{test.maxMarks}</span>
                                   </div>
@@ -439,7 +439,7 @@ export default function StudentDashboard() {
               ) : (
                 <Card className="border-0 shadow-sm">
                   <CardContent className="py-12">
-                    <p className="text-slate-400 text-center">No results available yet</p>
+                    <p className="text-muted-foreground text-center">No results available yet</p>
                   </CardContent>
                 </Card>
               )
@@ -447,8 +447,8 @@ export default function StudentDashboard() {
           </main>
 
           {/* Footer */}
-          <footer className="bg-white border-t border-slate-100 py-3 mt-auto">
-            <p className="text-center text-xs text-slate-400">&copy; 2024 Sankalp Result Management System</p>
+          <footer className="bg-background border-t border-border py-3 mt-auto">
+            <p className="text-center text-xs text-muted-foreground">&copy; 2024 Sankalp Result Management System</p>
           </footer>
         </div>
       </SidebarInset>

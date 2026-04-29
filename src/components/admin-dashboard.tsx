@@ -372,9 +372,9 @@ export default function AdminDashboard() {
   // Status badge helper
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Upcoming': return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">{status}</Badge>
-      case 'Today': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{status}</Badge>
-      case 'Completed': return <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">{status}</Badge>
+      case 'Upcoming': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400">{status}</Badge>
+      case 'Today': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">{status}</Badge>
+      case 'Completed': return <Badge className="bg-muted text-muted-foreground hover:bg-muted">{status}</Badge>
       default: return <Badge>{status}</Badge>
     }
   }
@@ -393,10 +393,10 @@ export default function AdminDashboard() {
       />
       <SidebarInset>
         {/* Top Header Bar */}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-white px-4 sticky top-0 z-40">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-40">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-sm font-semibold text-slate-800">{PAGE_TITLES[activeTab] || 'Overview'}</h1>
+          <h1 className="text-sm font-semibold text-foreground">{PAGE_TITLES[activeTab] || 'Overview'}</h1>
         </header>
 
         {/* Main Content */}
@@ -409,10 +409,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-500">Students</p>
-                        <p className="text-2xl font-bold text-teal-600">{students.length}</p>
+                        <p className="text-sm text-muted-foreground">Students</p>
+                        <p className="text-2xl font-bold text-primary">{students.length}</p>
                       </div>
-                      <Users className="w-8 h-8 text-teal-200" />
+                      <Users className="w-8 h-8 text-primary/25" />
                     </div>
                   </CardContent>
                 </Card>
@@ -420,10 +420,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-500">Teachers</p>
-                        <p className="text-2xl font-bold text-emerald-600">{teachers.length}</p>
+                        <p className="text-sm text-muted-foreground">Teachers</p>
+                        <p className="text-2xl font-bold text-primary">{teachers.length}</p>
                       </div>
-                      <BookOpen className="w-8 h-8 text-emerald-200" />
+                      <BookOpen className="w-8 h-8 text-primary/25" />
                     </div>
                   </CardContent>
                 </Card>
@@ -431,10 +431,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-500">Tests</p>
-                        <p className="text-2xl font-bold text-amber-600">{tests.length}</p>
+                        <p className="text-sm text-muted-foreground">Tests</p>
+                        <p className="text-2xl font-bold text-primary">{tests.length}</p>
                       </div>
-                      <ClipboardList className="w-8 h-8 text-amber-200" />
+                      <ClipboardList className="w-8 h-8 text-primary/25" />
                     </div>
                   </CardContent>
                 </Card>
@@ -442,10 +442,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-500">Classes</p>
-                        <p className="text-2xl font-bold text-rose-600">{classes.length}</p>
+                        <p className="text-sm text-muted-foreground">Classes</p>
+                        <p className="text-2xl font-bold text-destructive">{classes.length}</p>
                       </div>
-                      <GraduationCap className="w-8 h-8 text-rose-200" />
+                      <GraduationCap className="w-8 h-8 text-primary/25" />
                     </div>
                   </CardContent>
                 </Card>
@@ -459,14 +459,14 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   {tests.length === 0 ? (
-                    <p className="text-slate-400 text-center py-8">No tests found</p>
+                    <p className="text-muted-foreground text-center py-8">No tests found</p>
                   ) : (
                     <div className="space-y-3">
                       {tests.slice(0, 5).map(test => (
-                        <div key={test.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                        <div key={test.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
                           <div>
                             <p className="font-medium text-sm">{test.name}</p>
-                            <p className="text-xs text-slate-500">{test.subject.name} • {test.class.name} • {test.date}</p>
+                            <p className="text-xs text-muted-foreground">{test.subject.name} • {test.class.name} • {test.date}</p>
                           </div>
                           {getStatusBadge(test.status)}
                         </div>
@@ -494,7 +494,7 @@ export default function AdminDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={() => openStudentDialog()} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white">
+                  <Button onClick={() => openStudentDialog()} className="bg-primary hover:bg-[#162E93] text-white">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Student
                   </Button>
@@ -504,10 +504,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-0">
                     {loadingStudents ? (
                       <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
                     ) : students.length === 0 ? (
-                      <p className="text-slate-400 text-center py-12">No students found</p>
+                      <p className="text-muted-foreground text-center py-12">No students found</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <Table>
@@ -530,7 +530,7 @@ export default function AdminDashboard() {
                                     <Button variant="ghost" size="sm" onClick={() => openStudentDialog(student)}>
                                       <Pencil className="w-4 h-4" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" className="text-rose-600 hover:text-rose-700" onClick={() => handleDeleteStudent(student.id)}>
+                                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteStudent(student.id)}>
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </div>
@@ -550,8 +550,8 @@ export default function AdminDashboard() {
             {activeTab === 'teachers' && (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-800">Teachers</h2>
-                  <Button onClick={() => openTeacherDialog()} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white">
+                  <h2 className="text-lg font-semibold text-foreground">Teachers</h2>
+                  <Button onClick={() => openTeacherDialog()} className="bg-primary hover:bg-[#162E93] text-white">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Teacher
                   </Button>
@@ -559,12 +559,12 @@ export default function AdminDashboard() {
 
                 {loadingTeachers ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : teachers.length === 0 ? (
                   <Card className="border-0 shadow-sm">
                     <CardContent className="py-12">
-                      <p className="text-slate-400 text-center">No teachers found</p>
+                      <p className="text-muted-foreground text-center">No teachers found</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -574,22 +574,22 @@ export default function AdminDashboard() {
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
                             <div>
-                              <h3 className="font-semibold text-slate-800">{teacher.user.name}</h3>
-                              <p className="text-xs text-slate-500">@{teacher.user.username}</p>
+                              <h3 className="font-semibold text-foreground">{teacher.user.name}</h3>
+                              <p className="text-xs text-muted-foreground">@{teacher.user.username}</p>
                             </div>
                             <div className="flex items-center gap-1">
                               <Button variant="ghost" size="sm" onClick={() => openTeacherDialog(teacher)}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="text-rose-600 hover:text-rose-700" onClick={() => handleDeleteTeacher(teacher.id)}>
+                              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTeacher(teacher.id)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
                           <div className="space-y-1">
                             {teacher.subjects.map(sub => (
-                              <div key={sub.id} className="flex items-center gap-2 text-sm text-slate-600">
-                                <Badge variant="secondary" className="text-xs bg-teal-50 text-teal-700">
+                              <div key={sub.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Badge variant="secondary" className="text-xs bg-accent text-primary">
                                   {sub.className}
                                 </Badge>
                                 <span>{sub.subjectName}</span>
@@ -625,10 +625,10 @@ export default function AdminDashboard() {
                   <CardContent className="p-0">
                     {loadingTests ? (
                       <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
                     ) : tests.length === 0 ? (
-                      <p className="text-slate-400 text-center py-12">No tests found</p>
+                      <p className="text-muted-foreground text-center py-12">No tests found</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <Table>
@@ -688,7 +688,7 @@ export default function AdminDashboard() {
 
                 {loadingResults ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : classResults && classResults.students.length > 0 ? (
                   <Card className="border-0 shadow-sm">
@@ -710,7 +710,7 @@ export default function AdminDashboard() {
                               <TableRow key={student.studentId}>
                                 <TableCell className="font-bold">
                                   {student.rank <= 3 ? (
-                                    <Badge className={student.rank === 1 ? 'bg-amber-100 text-amber-700' : student.rank === 2 ? 'bg-slate-100 text-slate-600' : 'bg-orange-100 text-orange-700'}>
+                                    <Badge className={student.rank === 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : student.rank === 2 ? 'bg-muted text-muted-foreground' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'}>
                                       #{student.rank}
                                     </Badge>
                                   ) : `#${student.rank}`}
@@ -719,18 +719,18 @@ export default function AdminDashboard() {
                                 <TableCell>{student.rollNo}</TableCell>
                                 <TableCell>{student.totalMarks}/{student.totalMaxMarks}</TableCell>
                                 <TableCell>
-                                  <span className={student.percentage >= 60 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>
+                                  <span className={student.percentage >= 60 ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
                                     {student.percentage}%
                                   </span>
                                 </TableCell>
                                 <TableCell>
                                   {student.weakSubject ? (
                                     <div className="flex items-center gap-1">
-                                      <TrendingDown className="w-3 h-3 text-rose-500" />
-                                      <span className="text-rose-600 text-xs">{student.weakSubject.subjectName} ({student.weakSubject.percentage}%)</span>
+                                      <TrendingDown className="w-3 h-3 text-destructive" />
+                                      <span className="text-destructive text-xs">{student.weakSubject.subjectName} ({student.weakSubject.percentage}%)</span>
                                     </div>
                                   ) : (
-                                    <span className="text-slate-400 text-xs">N/A</span>
+                                    <span className="text-muted-foreground text-xs">N/A</span>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -743,7 +743,7 @@ export default function AdminDashboard() {
                 ) : selectedResultClass ? (
                   <Card className="border-0 shadow-sm">
                     <CardContent className="py-12">
-                      <p className="text-slate-400 text-center">No results available for this class</p>
+                      <p className="text-muted-foreground text-center">No results available for this class</p>
                     </CardContent>
                   </Card>
                 ) : null}
@@ -845,7 +845,7 @@ export default function AdminDashboard() {
                         </div>
                       )}
 
-                      <Button onClick={handleGenerateReport} disabled={loadingReport} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white">
+                      <Button onClick={handleGenerateReport} disabled={loadingReport} className="bg-primary hover:bg-[#162E93] text-white">
                         {loadingReport ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
                         Generate Report
                       </Button>
@@ -862,8 +862,8 @@ export default function AdminDashboard() {
           </main>
 
           {/* Footer */}
-          <footer className="bg-white border-t border-slate-100 py-3 mt-auto">
-            <p className="text-center text-xs text-slate-400">© 2024 Sankalp Result Management System</p>
+          <footer className="bg-background border-t border-border py-3 mt-auto">
+            <p className="text-center text-xs text-muted-foreground">© 2024 Sankalp Result Management System</p>
           </footer>
         </div>
 
@@ -913,7 +913,7 @@ export default function AdminDashboard() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowStudentDialog(false)}>Cancel</Button>
-              <Button onClick={handleSaveStudent} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white">
+              <Button onClick={handleSaveStudent} className="bg-primary hover:bg-[#162E93] text-white">
                 {editingStudent ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
@@ -958,7 +958,7 @@ export default function AdminDashboard() {
                 {teacherForm.subjectAssignments.map((assignment, idx) => (
                   <div key={idx} className="flex items-end gap-2">
                     <div className="flex-1">
-                      <Label className="text-xs text-slate-500">Class</Label>
+                      <Label className="text-xs text-muted-foreground">Class</Label>
                       <Select value={assignment.classId} onValueChange={(val) => {
                         const updated = [...teacherForm.subjectAssignments]
                         updated[idx] = { classId: val, subjectId: '' }
@@ -975,7 +975,7 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                     <div className="flex-1">
-                      <Label className="text-xs text-slate-500">Subject</Label>
+                      <Label className="text-xs text-muted-foreground">Subject</Label>
                       <Select value={assignment.subjectId} onValueChange={(val) => {
                         const updated = [...teacherForm.subjectAssignments]
                         updated[idx] = { ...updated[idx], subjectId: val }
@@ -992,7 +992,7 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                     {teacherForm.subjectAssignments.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" className="text-rose-500 h-10" onClick={() => {
+                      <Button type="button" variant="ghost" size="sm" className="text-destructive h-10" onClick={() => {
                         setTeacherForm(f => ({ ...f, subjectAssignments: f.subjectAssignments.filter((_, i) => i !== idx) }))
                       }}>
                         <X className="w-4 h-4" />
@@ -1004,7 +1004,7 @@ export default function AdminDashboard() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowTeacherDialog(false)}>Cancel</Button>
-              <Button onClick={handleSaveTeacher} className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white">
+              <Button onClick={handleSaveTeacher} className="bg-primary hover:bg-[#162E93] text-white">
                 {editingTeacher ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>

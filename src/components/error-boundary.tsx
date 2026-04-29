@@ -44,20 +44,20 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-muted p-4">
           <Card className="w-full max-w-md border-0 shadow-lg">
             <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-rose-100 mb-4 mx-auto">
-                <AlertCircle className="w-7 h-7 text-rose-600" />
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-destructive/10 mb-4 mx-auto">
+                <AlertCircle className="w-7 h-7 text-destructive" />
               </div>
-              <CardTitle className="text-xl text-slate-800">Something went wrong</CardTitle>
+              <CardTitle className="text-xl text-foreground">Something went wrong</CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 An unexpected error occurred. Please try again.
               </p>
               {this.state.error && (
-                <div className="p-3 rounded-md bg-slate-100 text-xs text-slate-600 text-left overflow-auto max-h-32">
+                <div className="p-3 rounded-md bg-muted text-xs text-muted-foreground text-left overflow-auto max-h-32">
                   {this.state.error.message}
                 </div>
               )}
@@ -72,7 +72,7 @@ export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, E
                 </Button>
                 <Button
                   onClick={this.handleReload}
-                  className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white gap-2"
+                  className="bg-primary hover:bg-[#162E93] text-white gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Reload Page

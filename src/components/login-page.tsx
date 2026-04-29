@@ -49,17 +49,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-emerald-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-accent via-background to-accent p-4">
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-teal-600 to-emerald-600 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary mb-4">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold text-primary">
             Sankalp
           </h1>
-          <p className="text-slate-500 mt-1">Result Management System</p>
+          <p className="text-muted-foreground mt-1">Result Management System</p>
         </div>
 
         <Card className="shadow-lg border-0">
@@ -82,7 +82,7 @@ export default function LoginPage() {
 
               {/* Error Message */}
               {error && (
-                <div className="flex items-center gap-2 p-3 mb-4 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-sm">
+                <div className="flex items-center gap-2 p-3 mb-4 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <Button
                 type="submit"
-                className="w-full h-11 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+                className="w-full h-11 bg-primary hover:bg-[#162E93] text-white"
                 disabled={loading}
               >
                 {loading ? (
@@ -135,7 +135,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           © 2024 Sankalp Result Management System
         </p>
       </div>

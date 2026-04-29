@@ -160,12 +160,12 @@ function DateRangeBadge({ dateRange }: { dateRange?: DateRangeInfo | null }) {
   const to = dateRange.to ? new Date(dateRange.to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Present'
   return (
     <div style={{
-      background: '#f0fdfa',
-      border: '1px solid #99f6e4',
+      background: '#EEF0FF',
+      border: '1px solid #C7C8FF',
       borderRadius: '6px',
       padding: '8px 14px',
       fontSize: '12px',
-      color: '#0d9488',
+      color: '#2F2FE4',
       marginBottom: '16px',
       display: 'flex',
       alignItems: 'center',
@@ -181,7 +181,7 @@ function DateRangeBadge({ dateRange }: { dateRange?: DateRangeInfo | null }) {
 function ReportHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
+      background: 'linear-gradient(135deg, #2F2FE4 0%, #162E93 100%)',
       color: 'white',
       padding: '24px 32px',
       borderRadius: '8px 8px 0 0',
@@ -246,7 +246,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       color: '#0f172a',
       margin: '0 0 12px 0',
       paddingBottom: '6px',
-      borderBottom: '2px solid #0d9488',
+      borderBottom: '2px solid #2F2FE4',
       display: 'inline-block',
     }}>
       {children}
@@ -639,13 +639,13 @@ function SubjectReport({ data }: { data: SubjectReportData }) {
 function InfoBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div style={{
-      background: highlight ? '#f0fdfa' : '#f8fafc',
+      background: highlight ? '#EEF0FF' : '#f8fafc',
       borderRadius: '8px',
       padding: '12px 16px',
-      border: highlight ? '1px solid #99f6e4' : '1px solid #e2e8f0',
+      border: highlight ? '1px solid #C7C8FF' : '1px solid #e2e8f0',
     }}>
       <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
-      <div style={{ fontSize: '16px', fontWeight: 700, color: highlight ? '#0d9488' : '#0f172a' }}>{value}</div>
+      <div style={{ fontSize: '16px', fontWeight: 700, color: highlight ? '#2F2FE4' : '#0f172a' }}>{value}</div>
     </div>
   )
 }
@@ -695,7 +695,7 @@ export default function ReportView({ type, data }: ReportViewProps) {
       <div className="no-print flex items-center justify-end gap-2 mb-4">
         <Button
           onClick={handlePrint}
-          className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+          className="bg-primary hover:bg-[#162E93] text-white"
         >
           <Printer className="w-4 h-4 mr-2" />
           Print Report
@@ -703,7 +703,7 @@ export default function ReportView({ type, data }: ReportViewProps) {
         <Button
           onClick={handlePrint}
           variant="outline"
-          className="border-teal-200 text-teal-700 hover:bg-teal-50"
+          className="border-primary/20 text-primary hover:bg-accent"
         >
           <Download className="w-4 h-4 mr-2" />
           Save as PDF

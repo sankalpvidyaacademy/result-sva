@@ -28,6 +28,7 @@ import {
   KeyRound,
 } from 'lucide-react'
 import ChangePasswordDialog from './change-password-dialog'
+import ThemeToggle from './theme-toggle'
 
 // ===== Menu Definitions per Role =====
 interface MenuItem {
@@ -94,7 +95,7 @@ export default function AppSidebar({
   const menuItems = getMenuItems(role)
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-200">
+    <Sidebar collapsible="icon">
       {/* ===== Header ===== */}
       <SidebarHeader className="p-3">
         <SidebarMenu>
@@ -103,12 +104,12 @@ export default function AppSidebar({
               size="lg"
               className="hover:bg-transparent cursor-default"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-600 to-emerald-600 text-white">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-white">
                 <GraduationCap className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-bold text-slate-800">Sankalp</span>
-                <span className="truncate text-xs text-slate-500">Result Management</span>
+                <span className="truncate font-bold text-foreground">Sankalp</span>
+                <span className="truncate text-xs text-muted-foreground">Result Management</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -120,7 +121,7 @@ export default function AppSidebar({
       {/* ===== Navigation ===== */}
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-slate-400 text-[10px] uppercase tracking-widest">
+          <SidebarGroupLabel className="text-muted-foreground text-[10px] uppercase tracking-widest">
             {ROLE_LABELS[role] || role}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -136,11 +137,11 @@ export default function AppSidebar({
                       tooltip={item.label}
                       className={`cursor-pointer transition-all duration-150 ${
                         isActive
-                          ? 'bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 font-semibold hover:from-teal-100 hover:to-emerald-100 hover:text-teal-800'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+                          ? 'bg-accent text-primary font-semibold hover:bg-accent/80'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                       }`}
                     >
-                      <Icon className={`size-4 ${isActive ? 'text-teal-600' : ''}`} />
+                      <Icon className={`size-4 ${isActive ? 'text-primary' : ''}`} />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -159,20 +160,25 @@ export default function AppSidebar({
           {/* User Info */}
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent cursor-default">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 text-white text-xs font-bold">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">
                 {userName.charAt(0).toUpperCase()}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-slate-700">{userName}</span>
-                <span className="truncate text-xs text-slate-400">{ROLE_LABELS[role]}</span>
+                <span className="truncate font-semibold text-foreground">{userName}</span>
+                <span className="truncate text-xs text-muted-foreground">{ROLE_LABELS[role]}</span>
               </div>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {/* Theme Toggle */}
+          <SidebarMenuItem>
+            <ThemeToggle />
           </SidebarMenuItem>
 
           {/* Change Password */}
           <SidebarMenuItem>
             <ChangePasswordDialog userId={userId}>
-              <SidebarMenuButton tooltip="Change Password" className="cursor-pointer text-slate-500 hover:text-slate-700 hover:bg-slate-100">
+              <SidebarMenuButton tooltip="Change Password" className="cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent">
                 <KeyRound className="size-4" />
                 <span>Change Password</span>
               </SidebarMenuButton>
@@ -184,7 +190,7 @@ export default function AppSidebar({
             <SidebarMenuButton
               tooltip="Logout"
               onClick={onLogout}
-              className="cursor-pointer text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+              className="cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <LogOut className="size-4" />
               <span>Logout</span>

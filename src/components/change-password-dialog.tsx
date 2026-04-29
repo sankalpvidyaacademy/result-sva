@@ -62,7 +62,7 @@ export default function ChangePasswordDialog({ userId, children }: ChangePasswor
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-teal-600">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
             <KeyRound className="w-4 h-4 mr-2" />
             Change Password
           </Button>
@@ -119,7 +119,7 @@ export default function ChangePasswordDialog({ userId, children }: ChangePasswor
             </Button>
             <Button
               type="submit"
-              className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+              className="bg-primary hover:bg-[#162E93] text-white"
               disabled={loading}
             >
               {loading ? (
