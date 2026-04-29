@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   // ADMIN, TEACHER, STUDENT
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher   Teacher?
+  student   Student?
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  subjects  Subject[]
+  students  Student[]
+  tests     Test[]
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  teacherSubjects TeacherSubject[]
+  tests           Test[]
+
+  @@unique([name, classId])
+}
+
+model Teacher {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  teacherSubjects TeacherSubject[]
+  tests           Test[]
+}
+
+model TeacherSubject {
+  id        String   @id @default(cuid())
+  teacherId String
+  subjectId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([teacherId, subjectId])
+}
+
+model Student {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classId  String
+  class    Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  rollNo   String
+
+  marks    Marks[]
+}
+
+model Test {
+  id        String   @id @default(cuid())
+  name      String
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  date      String   // ISO date string YYYY-MM-DD
+  maxMarks  Int
+  createdAt DateTime @default(now())
+
+  marks     Marks[]
+
+  @@unique([classId, subjectId, date])
+}
+
+model Marks {
+  id        String  @id @default(cuid())
+  testId    String
+  test      Test    @relation(fields: [testId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marks     Int
+
+  @@unique([testId, studentId])
+}
