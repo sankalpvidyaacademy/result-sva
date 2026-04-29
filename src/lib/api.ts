@@ -4,16 +4,28 @@ const API_BASE = '/api'
 
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   const url = `${API_BASE}${endpoint}`
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  })
-  const data = await res.json()
+  let res: Response
+  try {
+    res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+    })
+  } catch (error) {
+    throw new Error('Network error. Please check your connection.')
+  }
+
+  let data: Record<string, unknown>
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error(`Server error (${res.status}). Please try again.`)
+  }
+
   if (!data.success) {
-    throw new Error(data.message || 'API request failed')
+    throw new Error((data.message as string) || 'API request failed')
   }
   return data
 }

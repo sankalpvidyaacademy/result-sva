@@ -7,43 +7,55 @@ import LoginPage from '@/components/login-page'
 import AdminDashboard from '@/components/admin-dashboard'
 import TeacherDashboard from '@/components/teacher-dashboard'
 import StudentDashboard from '@/components/student-dashboard'
+import ErrorBoundary from '@/components/error-boundary'
 
 export default function Home() {
   const { user, setUser, currentPage, setCurrentPage, isLoading, setIsLoading } = useAppStore()
-
   // Check session on mount
   useEffect(() => {
+    let isMounted = true
+
     const checkSession = async () => {
       try {
         const data = await authAPI.getSession()
+        if (!isMounted) return
+
         if (data.success && data.user) {
           const sessionUser = {
-            id: data.user.userId,
+            id: (data.user as { userId: string; role: string; name: string }).userId,
             username: '',
-            role: data.user.role,
-            name: data.user.name,
+            role: (data.user as { userId: string; role: string; name: string }).role,
+            name: (data.user as { userId: string; role: string; name: string }).name,
           }
           setUser(sessionUser)
 
           // Navigate to appropriate dashboard
-          if (data.user.role === 'ADMIN') {
+          if (sessionUser.role === 'ADMIN') {
             setCurrentPage('admin-dashboard')
-          } else if (data.user.role === 'TEACHER') {
+          } else if (sessionUser.role === 'TEACHER') {
             setCurrentPage('teacher-dashboard')
-          } else if (data.user.role === 'STUDENT') {
+          } else if (sessionUser.role === 'STUDENT') {
             setCurrentPage('student-dashboard')
           }
         }
       } catch {
-        // Not authenticated, stay on login
-        setUser(null)
-        setCurrentPage('login')
+        // Not authenticated, stay on login - this is expected
+        if (isMounted) {
+          setUser(null)
+          setCurrentPage('login')
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     checkSession()
+
+    return () => {
+      isMounted = false
+    }
   }, [setUser, setCurrentPage, setIsLoading])
 
   // Loading state
@@ -62,19 +74,39 @@ export default function Home() {
     )
   }
 
-  // Render appropriate page
+  // Render appropriate page with error boundary
   if (!user || currentPage === 'login') {
-    return <LoginPage />
+    return (
+      <ErrorBoundary>
+        <LoginPage />
+      </ErrorBoundary>
+    )
   }
 
   switch (currentPage) {
     case 'admin-dashboard':
-      return <AdminDashboard />
+      return (
+        <ErrorBoundary>
+          <AdminDashboard />
+        </ErrorBoundary>
+      )
     case 'teacher-dashboard':
-      return <TeacherDashboard />
+      return (
+        <ErrorBoundary>
+          <TeacherDashboard />
+        </ErrorBoundary>
+      )
     case 'student-dashboard':
-      return <StudentDashboard />
+      return (
+        <ErrorBoundary>
+          <StudentDashboard />
+        </ErrorBoundary>
+      )
     default:
-      return <LoginPage />
+      return (
+        <ErrorBoundary>
+          <LoginPage />
+        </ErrorBoundary>
+      )
   }
 }
