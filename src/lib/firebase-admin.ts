@@ -3,7 +3,8 @@
 // Project: Sankalp Result Management System
 // Region: asia-south1 (Mumbai)
 //
-// NOTE: Lazy initialization to avoid gRPC memory issues in Next.js dev mode.
+// NOTE: Lazy initialization with promise-based locking to avoid race conditions
+// when multiple API routes call getAdminDb() concurrently.
 // The Admin SDK is only initialized when getAdminDb() or getAdminAuth() is called.
 
 // Lazy-load firebase-admin to avoid gRPC initialization at module import time
@@ -33,8 +34,18 @@ let adminApp: AdminApp | null = null
 let adminDb: AdminDb | null = null
 let adminAuth: AdminAuth | null = null
 
+// Promise-based locks to prevent concurrent initialization
+let adminAppInitPromise: Promise<AdminApp> | null = null
+let adminDbInitPromise: Promise<AdminDb> | null = null
+let adminAuthInitPromise: Promise<AdminAuth> | null = null
+
 async function getAdminApp(): Promise<AdminApp> {
-  if (!adminApp) {
+  if (adminApp) return adminApp
+  
+  // If initialization is already in progress, wait for it
+  if (adminAppInitPromise) return adminAppInitPromise
+  
+  adminAppInitPromise = (async () => {
     const admin = await getAdminModule()
     if (admin.apps.length > 0) {
       adminApp = admin.apps[0]
@@ -44,31 +55,49 @@ async function getAdminApp(): Promise<AdminApp> {
         projectId: 'sankalp-result-system',
       })
     }
-  }
-  return adminApp
+    return adminApp
+  })()
+  
+  return adminAppInitPromise
 }
 
 export async function getAdminDb(): Promise<AdminDb> {
-  if (!adminDb) {
+  if (adminDb) return adminDb
+  
+  // If initialization is already in progress, wait for it
+  if (adminDbInitPromise) return adminDbInitPromise
+  
+  adminDbInitPromise = (async () => {
     const app = await getAdminApp()
-    adminDb = app.firestore()
+    const db = app.firestore()
     try {
-      adminDb.settings({
+      db.settings({
         preferRest: true,
       })
     } catch {
       // Settings may already be applied in dev mode hot reload
     }
-  }
-  return adminDb
+    adminDb = db
+    return adminDb
+  })()
+  
+  return adminDbInitPromise
 }
 
 export async function getAdminAuth(): Promise<AdminAuth> {
-  if (!adminAuth) {
+  if (adminAuth) return adminAuth
+  
+  // If initialization is already in progress, wait for it
+  if (adminAuthInitPromise) return adminAuthInitPromise
+  
+  adminAuthInitPromise = (async () => {
+    const admin = await getAdminModule()
     const app = await getAdminApp()
     adminAuth = admin.auth(app)
-  }
-  return adminAuth
+    return adminAuth
+  })()
+  
+  return adminAuthInitPromise
 }
 
 // Helper: Create custom token for Firebase Auth (for Phase 2 auth integration)
