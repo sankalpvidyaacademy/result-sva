@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { cookies } from 'next/headers';
 
+// Login route - sets session cookie
+// Credential validation is done client-side via Firebase
+// This route just sets the session cookie for server-side session persistence
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password, role } = body;
+    const { userId, role, name } = body;
 
-    if (!username || !password || !role) {
+    if (!userId || !role || !name) {
       return NextResponse.json(
-        { success: false, message: 'Username, password, and role are required' },
+        { success: false, message: 'userId, role, and name are required' },
         { status: 400 }
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { username },
-    });
-
-    if (!user || user.password !== password || user.role !== role) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
     const sessionData = JSON.stringify({
-      userId: user.id,
-      role: user.role,
-      name: user.name,
+      userId,
+      role,
+      name,
     });
 
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        name: user.name,
-      },
+      user: { id: userId, role, name },
     });
 
     response.cookies.set('sankalp_session', sessionData, {
