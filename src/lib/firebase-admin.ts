@@ -3,9 +3,12 @@
 // Project: Sankalp Result Management System
 // Region: asia-south1 (Mumbai)
 //
-// NOTE: Lazy initialization with promise-based locking to avoid race conditions
-// when multiple API routes call getAdminDb() concurrently.
-// The Admin SDK is only initialized when getAdminDb() or getAdminAuth() is called.
+// Vercel Compatibility Notes:
+// - Lazy initialization with promise-based locking to avoid race conditions
+// - `preferRest: true` avoids gRPC issues on Vercel serverless
+// - Private key handling is robust to Vercel's env var mangling
+// - All credentials loaded lazily (not at module import time)
+// - firebase-admin is in serverExternalPackages in next.config.ts
 
 // Lazy-load firebase-admin to avoid gRPC initialization at module import time
 let _admin: typeof import('firebase-admin') | null = null
@@ -18,21 +21,34 @@ async function getAdminModule() {
 }
 
 // Service account credentials for Admin SDK (loaded from environment variables)
+// IMPORTANT: Called lazily at init time, NOT at module level,
+// because Vercel populates process.env after module import
 function getServiceAccount() {
   const projectId = process.env.FIREBASE_PROJECT_ID || 'sankalp-result-system'
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || ''
   const rawKey = process.env.FIREBASE_PRIVATE_KEY || ''
 
   // Handle private key: convert escaped \n to actual newlines
-  // Some environments store the key with literal \n, others with actual newlines
+  // Vercel dashboard often mangles newlines - they get stored as literal "\n" strings
   let privateKey = rawKey
+
+  // Step 1: Replace escaped \n with actual newlines
   if (privateKey.includes('\\n')) {
     privateKey = privateKey.replace(/\\n/g, '\n')
   }
 
-  // Ensure the key has proper PEM headers
+  // Step 2: If the key has no newlines at all, it was probably stripped
+  // Try to reconstruct the PEM format
+  if (privateKey && !privateKey.includes('\n') && privateKey.includes('-----BEGIN')) {
+    // The key is one long line - add newlines at PEM boundaries
+    privateKey = privateKey
+      .replace(/-----BEGIN PRIVATE KEY-----/g, '-----BEGIN PRIVATE KEY-----\n')
+      .replace(/-----END PRIVATE KEY-----/g, '\n-----END PRIVATE KEY-----\n')
+  }
+
+  // Step 3: Validate the key has proper PEM structure
   if (privateKey && !privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-    console.error('[firebase-admin] Private key is missing PEM header')
+    console.error('[firebase-admin] Private key is missing PEM header. Check FIREBASE_PRIVATE_KEY env var.')
   }
 
   return { projectId, clientEmail, privateKey }
@@ -53,6 +69,10 @@ let adminAppInitPromise: Promise<AdminApp> | null = null
 let adminDbInitPromise: Promise<AdminDb> | null = null
 let adminAuthInitPromise: Promise<AdminAuth> | null = null
 
+// Track initialization state for debugging
+let initError: string | null = null
+let initAttempted = false
+
 async function getAdminApp(): Promise<AdminApp> {
   if (adminApp) return adminApp
 
@@ -61,6 +81,7 @@ async function getAdminApp(): Promise<AdminApp> {
 
   adminAppInitPromise = (async () => {
     const admin = await getAdminModule()
+    initAttempted = true
 
     // Reuse existing app if already initialized (e.g., in dev mode hot reload)
     if (admin.apps.length > 0) {
@@ -72,16 +93,16 @@ async function getAdminApp(): Promise<AdminApp> {
 
     // Validate required credentials
     if (!serviceAccount.clientEmail) {
-      throw new Error(
-        '[firebase-admin] FIREBASE_CLIENT_EMAIL is missing. ' +
-        'Check your .env.local file.'
-      )
+      const msg = 'FIREBASE_CLIENT_EMAIL is missing. Set it in Vercel Environment Variables.'
+      console.error(`[firebase-admin] ${msg}`)
+      initError = msg
+      throw new Error(`[firebase-admin] ${msg}`)
     }
     if (!serviceAccount.privateKey) {
-      throw new Error(
-        '[firebase-admin] FIREBASE_PRIVATE_KEY is missing. ' +
-        'Check your .env.local file.'
-      )
+      const msg = 'FIREBASE_PRIVATE_KEY is missing. Set it in Vercel Environment Variables.'
+      console.error(`[firebase-admin] ${msg}`)
+      initError = msg
+      throw new Error(`[firebase-admin] ${msg}`)
     }
 
     try {
@@ -93,10 +114,15 @@ async function getAdminApp(): Promise<AdminApp> {
         }),
         projectId: serviceAccount.projectId,
       })
-      console.log('[firebase-admin] App initialized successfully')
+      console.log('[firebase-admin] App initialized successfully for project:', serviceAccount.projectId)
+      initError = null
       return adminApp
     } catch (error) {
-      console.error('[firebase-admin] Failed to initialize app:', error)
+      const msg = error instanceof Error ? error.message : 'Unknown initialization error'
+      console.error('[firebase-admin] Failed to initialize app:', msg)
+      initError = msg
+      // Reset promise so next call retries
+      adminAppInitPromise = null
       throw error
     }
   })()
@@ -116,6 +142,8 @@ export async function getAdminDb(): Promise<AdminDb> {
 
     try {
       db.settings({
+        // CRITICAL for Vercel: Use REST API instead of gRPC
+        // gRPC has cold-start and memory issues on Vercel serverless
         preferRest: true,
       })
     } catch {
@@ -123,7 +151,7 @@ export async function getAdminDb(): Promise<AdminDb> {
     }
 
     adminDb = db
-    console.log('[firebase-admin] Firestore initialized successfully')
+    console.log('[firebase-admin] Firestore initialized (preferRest: true)')
     return adminDb
   })()
 
@@ -146,7 +174,7 @@ export async function getAdminAuth(): Promise<AdminAuth> {
   return adminAuthInitPromise
 }
 
-// Helper: Create custom token for Firebase Auth (for Phase 2 auth integration)
+// Helper: Create custom token for Firebase Auth
 export async function createCustomToken(userId: string, role: string): Promise<string> {
   const auth = await getAdminAuth()
   return auth.createCustomToken(userId, { role })
@@ -322,6 +350,34 @@ export async function getFieldValue() {
   return admin.firestore.FieldValue
 }
 
+// ===== Diagnostic: Get Admin SDK status =====
+export function getAdminStatus(): {
+  initialized: boolean
+  attempted: boolean
+  error: string | null
+  hasDb: boolean
+  envCheck: {
+    hasProjectId: boolean
+    hasClientEmail: boolean
+    hasPrivateKey: boolean
+    privateKeyHasPemHeader: boolean
+  }
+} {
+  const sa = getServiceAccount()
+  return {
+    initialized: adminApp !== null,
+    attempted: initAttempted,
+    error: initError,
+    hasDb: adminDb !== null,
+    envCheck: {
+      hasProjectId: !!sa.projectId,
+      hasClientEmail: !!sa.clientEmail,
+      hasPrivateKey: !!sa.privateKey,
+      privateKeyHasPemHeader: sa.privateKey.includes('-----BEGIN PRIVATE KEY-----'),
+    },
+  }
+}
+
 // ===== Diagnostic: Test Admin SDK connection =====
 export async function testAdminConnection(): Promise<{
   connected: boolean
@@ -352,6 +408,7 @@ export async function testAdminConnection(): Promise<{
     return {
       connected: false,
       message: `Firebase Admin SDK connection failed: ${message}`,
+      details: getAdminStatus().envCheck,
     }
   }
 }

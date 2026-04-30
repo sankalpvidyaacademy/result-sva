@@ -20,19 +20,22 @@ async function fetchAPI(endpoint: string, options?: RequestInit) {
       },
       ...options,
     })
-  } catch {
-    throw new Error('Network error. Please check your connection.')
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    throw new Error(`Network error: ${message}. Check your connection and try again.`)
   }
 
   let data: Record<string, unknown>
   try {
     data = await res.json()
   } catch {
-    throw new Error(`Server error (${res.status}). Please try again.`)
+    throw new Error(`Server error (${res.status}). The API returned an invalid response.`)
   }
 
   if (!data.success) {
-    throw new Error((data.message as string) || 'API request failed')
+    // Include the server's error message for better debugging
+    const serverMessage = (data.message as string) || 'API request failed'
+    throw new Error(serverMessage)
   }
   return data
 }

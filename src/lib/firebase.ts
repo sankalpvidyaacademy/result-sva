@@ -1,5 +1,11 @@
 // Firebase Client SDK initialization for Sankalp Result Management System
 // Region: asia-south1 (Mumbai)
+//
+// IMPORTANT: This file is CLIENT-SIDE ONLY.
+// It must never be imported in API routes or server components.
+// All server-side operations use firebase-admin.ts instead.
+
+'use client'
 
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
@@ -25,7 +31,7 @@ if (isFirebaseConfigured) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
     firestoreDb = getFirestore(app)
   } catch (error) {
-    console.warn('Firebase initialization failed:', error)
+    console.warn('[firebase-client] Initialization failed:', error)
   }
 }
 
