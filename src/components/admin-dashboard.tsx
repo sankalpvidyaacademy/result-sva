@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -52,7 +54,7 @@ import ReportView from './report-view'
 
 // ===== Types =====
 interface ClassItem { id: string; name: string; subjects?: { id: string; name: string; classId: string }[] }
-interface StudentItem { id: string; rollNo: string; user: { id: string; name: string; username: string }; class: { id: string; name: string } }
+interface StudentItem { id: string; rollNo: string; user: { id: string; name: string; username: string }; class: { id: string; name: string }; studentSubjects?: { subjectId: string; subject: { id: string; name: string; classId: string } }[] }
 interface TeacherItem { id: string; userId: string; user: { id: string; name: string; username: string }; subjects: { id: string; subjectId: string; subjectName: string; classId: string; className: string }[] }
 interface TestItem { id: string; name: string; date: string; maxMarks: number; status: string; subject: { id: string; name: string }; class: { id: string; name: string }; teacher: { id: string; name: string }; marksCount: number }
 
@@ -125,7 +127,7 @@ export default function AdminDashboard() {
   }
 
   // Form states for student dialog
-  const [studentForm, setStudentForm] = useState({ username: '', password: '', name: '', classId: '', rollNo: '' })
+  const [studentForm, setStudentForm] = useState({ username: '', password: '', name: '', classId: '', rollNo: '', subjectIds: [] as string[] })
   // Form states for teacher dialog
   const [teacherForm, setTeacherForm] = useState({ username: '', password: '', name: '', subjectAssignments: [{ classId: '', subjectId: '' }] })
 
@@ -229,10 +231,17 @@ export default function AdminDashboard() {
   const openStudentDialog = (student?: StudentItem) => {
     if (student) {
       setEditingStudent(student)
-      setStudentForm({ username: student.user.username, password: '', name: student.user.name, classId: student.class.id, rollNo: student.rollNo })
+      setStudentForm({ 
+        username: student.user.username, 
+        password: '', 
+        name: student.user.name, 
+        classId: student.class.id, 
+        rollNo: student.rollNo,
+        subjectIds: student.studentSubjects?.map(ss => ss.subjectId) || []
+      })
     } else {
       setEditingStudent(null)
-      setStudentForm({ username: '', password: '', name: '', classId: '', rollNo: '' })
+      setStudentForm({ username: '', password: '', name: '', classId: '', rollNo: '', subjectIds: [] })
     }
     setShowStudentDialog(true)
   }
@@ -244,7 +253,7 @@ export default function AdminDashboard() {
     }
     try {
       if (editingStudent) {
-        await studentsAPI.update(editingStudent.id, { name: studentForm.name, classId: studentForm.classId, rollNo: studentForm.rollNo })
+        await studentsAPI.update(editingStudent.id, { name: studentForm.name, classId: studentForm.classId, rollNo: studentForm.rollNo, subjectIds: studentForm.subjectIds })
         toast.success('Student updated successfully')
       } else {
         if (!studentForm.username || !studentForm.password) {
@@ -885,7 +894,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-2">
                     <Label>Password *</Label>
-                    <Input type="password" value={studentForm.password} onChange={(e) => setStudentForm(f => ({ ...f, password: e.target.value }))} required className="h-11" />
+                    <PasswordInput value={studentForm.password} onChange={(e) => setStudentForm(f => ({ ...f, password: e.target.value }))} required className="h-11" />
                   </div>
                 </>
               )}
@@ -895,7 +904,7 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label>Class *</Label>
-                <Select value={studentForm.classId} onValueChange={(val) => setStudentForm(f => ({ ...f, classId: val }))}>
+                <Select value={studentForm.classId} onValueChange={(val) => setStudentForm(f => ({ ...f, classId: val, subjectIds: [] }))}>
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
@@ -906,6 +915,78 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
+              {!editingStudent && studentForm.classId && (
+                <div className="space-y-2">
+                  <Label>Select Subjects *</Label>
+                  {filteredSubjects(studentForm.classId).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects available for this class</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                      {filteredSubjects(studentForm.classId).map(subject => (
+                        <div key={subject.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`subject-${subject.id}`}
+                            checked={studentForm.subjectIds.includes(subject.id)}
+                            onCheckedChange={(checked) => {
+                              setStudentForm(f => ({
+                                ...f,
+                                subjectIds: checked
+                                  ? [...f.subjectIds, subject.id]
+                                  : f.subjectIds.filter(id => id !== subject.id)
+                              }))
+                            }}
+                          />
+                          <label
+                            htmlFor={`subject-${subject.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {subject.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {studentForm.subjectIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{studentForm.subjectIds.length} subject(s) selected</p>
+                  )}
+                </div>
+              )}
+              {editingStudent && studentForm.classId && (
+                <div className="space-y-2">
+                  <Label>Select Subjects</Label>
+                  {filteredSubjects(studentForm.classId).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No subjects available for this class</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                      {filteredSubjects(studentForm.classId).map(subject => (
+                        <div key={subject.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`subject-${subject.id}`}
+                            checked={studentForm.subjectIds.includes(subject.id)}
+                            onCheckedChange={(checked) => {
+                              setStudentForm(f => ({
+                                ...f,
+                                subjectIds: checked
+                                  ? [...f.subjectIds, subject.id]
+                                  : f.subjectIds.filter(id => id !== subject.id)
+                              }))
+                            }}
+                          />
+                          <label
+                            htmlFor={`subject-${subject.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {subject.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {studentForm.subjectIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{studentForm.subjectIds.length} subject(s) selected</p>
+                  )}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Roll No *</Label>
                 <Input value={studentForm.rollNo} onChange={(e) => setStudentForm(f => ({ ...f, rollNo: e.target.value }))} required className="h-11" />
@@ -938,7 +1019,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-2">
                     <Label>Password *</Label>
-                    <Input type="password" value={teacherForm.password} onChange={(e) => setTeacherForm(f => ({ ...f, password: e.target.value }))} required className="h-11" />
+                    <PasswordInput value={teacherForm.password} onChange={(e) => setTeacherForm(f => ({ ...f, password: e.target.value }))} required className="h-11" />
                   </div>
                 </>
               )}

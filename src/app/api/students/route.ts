@@ -21,6 +21,13 @@ export async function GET(request: NextRequest) {
         class: {
           select: { id: true, name: true },
         },
+        studentSubjects: {
+          include: {
+            subject: {
+              select: { id: true, name: true, classId: true },
+            },
+          },
+        },
       },
     });
 
@@ -37,7 +44,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password, name, classId, rollNo } = body;
+    const { username, password, name, classId, rollNo, subjectIds } = body;
 
     if (!username || !password || !name || !classId || !rollNo) {
       return NextResponse.json(
@@ -87,6 +94,21 @@ export async function POST(request: NextRequest) {
           classId,
           rollNo,
         },
+      });
+
+      // Create StudentSubject records for selected subjects
+      if (subjectIds && Array.isArray(subjectIds) && subjectIds.length > 0) {
+        await tx.studentSubject.createMany({
+          data: subjectIds.map((subjectId: string) => ({
+            studentId: student.id,
+            subjectId,
+          })),
+        });
+      }
+
+      // Fetch the student with all relations including studentSubjects
+      const studentWithRelations = await tx.student.findUnique({
+        where: { id: student.id },
         include: {
           user: {
             select: { id: true, username: true, name: true },
@@ -94,10 +116,17 @@ export async function POST(request: NextRequest) {
           class: {
             select: { id: true, name: true },
           },
+          studentSubjects: {
+            include: {
+              subject: {
+                select: { id: true, name: true, classId: true },
+              },
+            },
+          },
         },
       });
 
-      return student;
+      return studentWithRelations;
     });
 
     return NextResponse.json({ success: true, student: result }, { status: 201 });

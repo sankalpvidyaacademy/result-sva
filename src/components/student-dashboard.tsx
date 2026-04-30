@@ -38,7 +38,7 @@ export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState('tests')
 
   // Data states
-  const [studentData, setStudentData] = useState<{ id: string; rollNo: string; class: { id: string; name: string } } | null>(null)
+  const [studentData, setStudentData] = useState<{ id: string; rollNo: string; class: { id: string; name: string }; studentSubjects?: { subjectId: string; subject: { id: string; name: string; classId: string } }[] } | null>(null)
   const [tests, setTests] = useState<TestItem[]>([])
   const [marks, setMarks] = useState<MarkItem[]>([])
   const [studentResults, setStudentResults] = useState<{
@@ -67,7 +67,7 @@ export default function StudentDashboard() {
       const data = await studentsAPI.getAll()
       const me = data.students.find((s: { user: { id: string } }) => s.user.id === user.id)
       if (me) {
-        setStudentData({ id: me.id, rollNo: me.rollNo, class: me.class })
+        setStudentData({ id: me.id, rollNo: me.rollNo, class: me.class, studentSubjects: me.studentSubjects })
         loadTests(me.class.id)
         loadMarks(me.id)
         loadResults(me.id)
@@ -144,14 +144,25 @@ export default function StudentDashboard() {
     }
   }
 
+  // Filter by selected subjects
+  const selectedSubjectIds = studentData?.studentSubjects?.map(ss => ss.subjectId)
+  const hasSelectedSubjects = !!(selectedSubjectIds && selectedSubjectIds.length > 0)
+
+  const filteredTests = hasSelectedSubjects
+    ? tests.filter(t => selectedSubjectIds!.includes(t.subject.id))
+    : tests
+  const filteredMarks = hasSelectedSubjects
+    ? marks.filter(m => selectedSubjectIds!.includes(m.test.subject.id))
+    : marks
+
   // Categorize tests
-  const upcomingTests = tests.filter(t => t.status === 'Upcoming')
-  const todayTests = tests.filter(t => t.status === 'Today')
-  const completedTests = tests.filter(t => t.status === 'Completed')
+  const upcomingTests = filteredTests.filter(t => t.status === 'Upcoming')
+  const todayTests = filteredTests.filter(t => t.status === 'Today')
+  const completedTests = filteredTests.filter(t => t.status === 'Completed')
 
   // Group marks by subject
   const marksBySubject: Record<string, { subjectName: string; entries: { testName: string; marks: number; maxMarks: number; date: string }[] }> = {}
-  for (const m of marks) {
+  for (const m of filteredMarks) {
     const subjectId = m.test.subject.id
     if (!marksBySubject[subjectId]) {
       marksBySubject[subjectId] = { subjectName: m.test.subject.name, entries: [] }
@@ -163,6 +174,27 @@ export default function StudentDashboard() {
       date: m.test.date,
     })
   }
+
+  // Filter results by selected subjects
+  const filteredSubjectWise = hasSelectedSubjects && studentResults
+    ? studentResults.subjectWise.filter(sw => selectedSubjectIds!.includes(sw.subjectId))
+    : studentResults?.subjectWise
+  const filteredTotalMarks = filteredSubjectWise
+    ? filteredSubjectWise.reduce((sum, sw) => sum + sw.totalMarks, 0)
+    : 0
+  const filteredTotalMaxMarks = filteredSubjectWise
+    ? filteredSubjectWise.reduce((sum, sw) => sum + sw.totalMaxMarks, 0)
+    : 0
+  const filteredPercentage = filteredTotalMaxMarks > 0
+    ? Math.round((filteredTotalMarks / filteredTotalMaxMarks) * 100)
+    : 0
+  const filteredWeakSubject = filteredSubjectWise && filteredSubjectWise.length > 0
+    ? filteredSubjectWise.reduce((min, sw) => sw.percentage < min.percentage ? sw : min, filteredSubjectWise[0])
+    : null
+  const displayWeakSubject = hasSelectedSubjects ? filteredWeakSubject : studentResults?.weakSubject
+  const displayPercentage = hasSelectedSubjects ? filteredPercentage : studentResults?.percentage ?? 0
+  const displayTotalMarks = hasSelectedSubjects ? filteredTotalMarks : studentResults?.totalMarks ?? 0
+  const displayTotalMaxMarks = hasSelectedSubjects ? filteredTotalMaxMarks : studentResults?.totalMaxMarks ?? 0
 
   return (
     <SidebarProvider>
@@ -279,7 +311,7 @@ export default function StudentDashboard() {
                     </div>
                   )}
 
-                  {tests.length === 0 && (
+                  {filteredTests.length === 0 && (
                     <Card className="border-0 shadow-sm">
                       <CardContent className="py-12">
                         <p className="text-muted-foreground text-center">No tests scheduled yet</p>
@@ -360,15 +392,15 @@ export default function StudentDashboard() {
                           <div className="flex items-center justify-center mb-2">
                             <BarChart3 className="w-6 h-6 text-primary" />
                           </div>
-                          <p className="text-2xl font-bold text-primary">{studentResults.percentage}%</p>
+                          <p className="text-2xl font-bold text-primary">{displayPercentage}%</p>
                           <p className="text-xs text-muted-foreground">Overall</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-foreground">{studentResults.totalMarks}</p>
+                          <p className="text-2xl font-bold text-foreground">{displayTotalMarks}</p>
                           <p className="text-xs text-muted-foreground">Total Obtained</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-muted-foreground">{studentResults.totalMaxMarks}</p>
+                          <p className="text-2xl font-bold text-muted-foreground">{displayTotalMaxMarks}</p>
                           <p className="text-xs text-muted-foreground">Total Maximum</p>
                         </div>
                       </div>
@@ -376,14 +408,14 @@ export default function StudentDashboard() {
                   </Card>
 
                   {/* Weak Subject Alert */}
-                  {studentResults.weakSubject && (
+                  {displayWeakSubject && (
                     <Card className="border-0 shadow-sm bg-destructive/10 border-l-4 border-l-destructive/50">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                           <TrendingDown className="w-5 h-5 text-destructive shrink-0" />
                           <div>
                             <p className="font-semibold text-destructive text-sm">Weak Subject</p>
-                            <p className="text-destructive text-xs">{studentResults.weakSubject.subjectName} — {studentResults.weakSubject.percentage}%</p>
+                            <p className="text-destructive text-xs">{displayWeakSubject.subjectName} — {displayWeakSubject.percentage}%</p>
                           </div>
                         </div>
                       </CardContent>
@@ -397,8 +429,8 @@ export default function StudentDashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {studentResults.subjectWise.map(subject => {
-                          const isWeak = studentResults.weakSubject?.subjectId === subject.subjectId
+                        {(filteredSubjectWise ?? []).map(subject => {
+                          const isWeak = displayWeakSubject?.subjectId === subject.subjectId
                           return (
                             <div
                               key={subject.subjectId}

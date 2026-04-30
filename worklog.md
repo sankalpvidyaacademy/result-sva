@@ -335,3 +335,203 @@ Stage Summary:
 - All components use semantic Tailwind classes (bg-primary, bg-background, text-foreground, etc.)
 - Zero functionality changes - only visual improvements
 - Report print styles use brand blue gradient instead of teal/emerald
+
+---
+Task ID: 3
+Agent: Sub Agent
+Task: Update student API routes and API client to support subject selection during registration
+
+Work Log:
+- Read worklog.md and all three target files
+- Updated /api/students/route.ts (GET handler):
+  - Added `studentSubjects: { include: { subject: { select: { id: true, name: true, classId: true } } } }` to the include clause
+  - GET now returns student subject selections alongside user, class data
+- Updated /api/students/route.ts (POST handler):
+  - Added `subjectIds` extraction from request body
+  - After creating the student inside the transaction, creates StudentSubject records via `tx.studentSubject.createMany` when subjectIds is a non-empty array
+  - After createMany, re-fetches the student with `tx.student.findUnique` including studentSubjects relation to return complete data
+- Updated /api/students/[id]/route.ts (GET handler):
+  - Added `studentSubjects: { include: { subject: { select: { id: true, name: true, classId: true } } } }` to the include clause
+- Updated /api/students/[id]/route.ts (PUT handler):
+  - Added `subjectIds` extraction from request body
+  - Added `studentSubjects` include to the initial student update query
+  - When `subjectIds !== undefined`, deletes existing StudentSubjects via `deleteMany`, then creates new ones via `createMany`
+  - Re-fetches student with studentSubjects after updating subjects to return fresh data
+- Updated /lib/api.ts:
+  - Updated `studentsAPI.create` type signature to include `subjectIds?: string[]`
+  - Updated `studentsAPI.update` type signature to include `subjectIds?: string[]`
+- Verified TypeScript compilation: no new errors introduced (all 45 errors are pre-existing in other files)
+- All changes are additive and backward-compatible (subjectIds is optional in all handlers)
+
+Stage Summary:
+- All student API routes now support subject selection (StudentSubject records)
+- POST /api/students: accepts optional subjectIds array, creates StudentSubject records in transaction
+- GET /api/students: returns studentSubjects with subject details in list responses
+- GET /api/students/[id]: returns studentSubjects with subject details in single student response
+- PUT /api/students/[id]: accepts optional subjectIds array, replaces existing subject selections
+- API client types updated to include subjectIds in create and update methods
+- No breaking changes — subjectIds is optional everywhere
+
+---
+Task ID: 6
+Agent: Sub Agent
+Task: Create PasswordInput component
+
+Work Log:
+- Read worklog.md for context
+- Verified src/components/ui/input.tsx exists (shadcn Input component)
+- Created /home/z/my-project/src/components/ui/password-input.tsx with:
+  - 'use client' directive for client-side interactivity
+  - Imports: useState from React, Input from shadcn, Eye/EyeOff from lucide-react
+  - PasswordInputProps interface extending React.InputHTMLAttributes<HTMLInputElement>
+  - showPassword state toggle via useState
+  - Wraps shadcn Input in a relative div with pr-10 padding for icon space
+  - Toggle button positioned absolutely (right-3, top-1/2, -translate-y-1/2)
+  - Uses text-muted-foreground / hover:text-foreground for theme-aware icon colors
+  - tabIndex={-1} to skip toggle in keyboard tab order
+  - Dynamic aria-label for accessibility ("Show password" / "Hide password")
+  - EyeOff icon when visible, Eye icon when hidden
+  - Spreads all passthrough props to Input
+- TypeScript compilation: no errors for password-input.tsx
+- No existing functionality affected — purely additive component
+
+Stage Summary:
+- Created reusable PasswordInput component at src/components/ui/password-input.tsx
+- Wraps shadcn Input with show/hide password toggle using Eye/EyeOff icons
+- Fully accessible (aria-label), theme-aware (muted-foreground/foreground), and keyboard-friendly (tabIndex=-1 on toggle)
+- Inherits all standard Input HTML attributes via props spread
+
+---
+Task ID: 4
+Agent: Sub Agent
+Task: Update admin student dialog — add subject checkbox selection and PasswordInput component
+
+Work Log:
+- Read worklog.md and admin-dashboard.tsx (~1060 lines)
+- Added imports: PasswordInput from @/components/ui/password-input, Checkbox from @/components/ui/checkbox
+- Updated StudentItem interface: added optional `studentSubjects` field with `{ subjectId: string; subject: { id: string; name: string; classId: string } }[]`
+- Updated studentForm state: added `subjectIds: [] as string[]` to the form object
+- Updated openStudentDialog: populates subjectIds from student.studentSubjects when editing, resets to [] for new student
+- Updated handleSaveStudent: passes `subjectIds: studentForm.subjectIds` to studentsAPI.update when editing
+- Updated class Select onValueChange: clears subjectIds (`subjectIds: []`) when class changes
+- Replaced password `<Input type="password">` with `<PasswordInput>` component for show/hide toggle
+- Added subject checkbox section for new student mode (shows "Select Subjects *" label, only when classId is selected)
+- Added subject checkbox section for edit mode (shows "Select Subjects" label, no asterisk)
+- Both checkbox sections use filteredSubjects(classId) to get subjects for the selected class
+- Checkbox grid uses 2-column layout with max-h-48 overflow-y-auto for scrolling
+- Shows "X subject(s) selected" helper text when any subjects are checked
+- Shows "No subjects available for this class" when class has no subjects
+- Fixed duplicate PasswordInput import that was introduced during editing
+- TypeScript compilation: no new errors introduced (all errors are pre-existing in other files)
+
+Stage Summary:
+- Admin student registration dialog now includes subject checkbox selection
+- Subject checkboxes appear after class selection, both in create and edit modes
+- Changing class resets selected subjects to prevent invalid selections
+- Password field now uses PasswordInput component with show/hide toggle
+- Subject data flows through to API via subjectIds in both create and update operations
+
+---
+Task ID: 7
+Agent: Sub Agent
+Task: Apply PasswordInput everywhere — replace plain Input type="password" with PasswordInput component
+
+Work Log:
+- Read worklog.md and all three target files
+- Updated login-page.tsx:
+  - Added import: `import { PasswordInput } from '@/components/ui/password-input'`
+  - Replaced `<Input id="password" type="password"` with `<PasswordInput id="password"` (removed `type="password"`)
+  - Kept all other props (placeholder, value, onChange, required, className)
+- Updated change-password-dialog.tsx:
+  - Added import: `import { PasswordInput } from '@/components/ui/password-input'`
+  - Replaced all 3 `<Input` with `type="password"` → `<PasswordInput` (currentPassword, newPassword, confirmPassword)
+  - Removed `type="password"` from each, kept all other props (id, value, onChange, required, className, minLength)
+- Updated admin-dashboard.tsx:
+  - Verified PasswordInput was NOT yet imported (student dialog update from separate task not yet applied)
+  - Added import: `import { PasswordInput } from '@/components/ui/password-input'`
+  - Replaced teacher dialog: `<Input type="password" value={teacherForm.password} ...>` → `<PasswordInput value={teacherForm.password} ...>` (removed `type="password"`)
+  - Note: Student dialog still has `<Input type="password"` on line 889 — that is handled by a separate task
+- TypeScript compilation: no new errors introduced (all errors are pre-existing in seed.ts and examples)
+- No logic, functionality, or structural changes — only component swap from Input to PasswordInput
+
+Stage Summary:
+- Successfully replaced all specified plain Input type="password" with PasswordInput component across 3 files
+- login-page.tsx: 1 replacement (login password field)
+- change-password-dialog.tsx: 3 replacements (current, new, confirm password fields)
+- admin-dashboard.tsx: 1 replacement (teacher dialog password field) + added PasswordInput import
+- All password fields now have show/hide toggle via Eye/EyeOff icons
+- Student dialog password in admin-dashboard.tsx still uses plain Input (handled by separate task)
+
+---
+Task ID: 5
+Agent: Sub Agent
+Task: Update student dashboard to only show subjects that the student has selected (via StudentSubject records)
+
+Work Log:
+- Read worklog.md and student-dashboard.tsx (490 lines)
+- Updated studentData type to include studentSubjects:
+  - Added `studentSubjects?: { subjectId: string; subject: { id: string; name: string; classId: string } }[]` to the useState type
+- Updated loadStudentData to store studentSubjects from the API response:
+  - Changed `setStudentData({ id: me.id, rollNo: me.rollNo, class: me.class })` to include `studentSubjects: me.studentSubjects`
+- Added subject filtering logic before test categorization:
+  - Computed `selectedSubjectIds` from `studentData?.studentSubjects?.map(ss => ss.subjectId)`
+  - Computed `hasSelectedSubjects` boolean flag
+  - Created `filteredTests` — filters tests by selected subject IDs, falls back to all tests if no selection
+  - Created `filteredMarks` — filters marks by selected subject IDs, falls back to all marks if no selection
+- Updated test categorization to use `filteredTests` instead of raw `tests`
+- Updated marks grouping loop to use `filteredMarks` instead of raw `marks`
+- Updated empty state check from `tests.length === 0` to `filteredTests.length === 0`
+- Added results filtering computations:
+  - `filteredSubjectWise` — filters subjectWise by selected subject IDs
+  - `filteredTotalMarks` — recalculated total from filtered subjects
+  - `filteredTotalMaxMarks` — recalculated max total from filtered subjects
+  - `filteredPercentage` — recalculated percentage from filtered totals
+  - `filteredWeakSubject` — recalculated weak subject from filtered subjects (lowest percentage)
+  - `displayWeakSubject` — uses filtered or original weak subject based on hasSelectedSubjects
+  - `displayPercentage`, `displayTotalMarks`, `displayTotalMaxMarks` — display values using filtered or original data
+- Updated render section:
+  - Overall Performance card: uses `displayPercentage`, `displayTotalMarks`, `displayTotalMaxMarks` instead of `studentResults.*`
+  - Weak Subject Alert: uses `displayWeakSubject` instead of `studentResults.weakSubject`
+  - Subject-wise Breakdown: maps over `(filteredSubjectWise ?? [])` instead of `studentResults.subjectWise`
+  - isWeak check: uses `displayWeakSubject?.subjectId` instead of `studentResults.weakSubject?.subjectId`
+- Backward compatible: if student has no studentSubjects (e.g., created before this feature), `hasSelectedSubjects` is false and ALL subjects are shown
+- Rank remains unchanged (overall rank, not filtered)
+- TypeScript compilation: no new errors introduced (4 pre-existing API type errors unrelated to this change)
+
+Stage Summary:
+- Student dashboard now filters all data by the student's selected subjects (StudentSubject records)
+- My Tests tab: shows only tests for selected subjects
+- My Marks tab: shows only marks for selected subjects
+- My Results tab: shows only selected subjects with recalculated totals, percentage, and weak subject
+- Backward compatible: students with no subject selection see all subjects (unchanged behavior)
+- No structural/layout changes — only filtering logic added
+
+---
+Task ID: PRD-2
+Agent: Main Agent
+Task: Add Student Subject Selection + Show Password Feature
+
+Work Log:
+- Added StudentSubject model to Prisma schema (many-to-many between Student and Subject)
+- Added studentSubjects relation to Subject model
+- Pushed schema changes with bun run db:push
+- Updated GET /api/students to include studentSubjects with subject relation
+- Updated POST /api/students to accept subjectIds and create StudentSubject records
+- Updated GET /api/students/[id] to include studentSubjects
+- Updated PUT /api/students/[id] to accept subjectIds (delete+recreate pattern)
+- Updated api.ts: studentsAPI.create and update now accept optional subjectIds
+- Created PasswordInput component with Eye/EyeOff toggle
+- Updated admin-dashboard student dialog: added subject checkbox multi-select filtered by class
+- Updated admin-dashboard: student form now includes subjectIds state, clears on class change
+- Updated admin-dashboard: PasswordInput for student and teacher password fields
+- Updated login-page.tsx: PasswordInput for login password field
+- Updated change-password-dialog.tsx: PasswordInput for all 3 password fields
+- Updated student-dashboard.tsx: filters tests/marks/results by selected subjects
+- Backward compatible: students without studentSubjects see all subjects
+
+Stage Summary:
+- Student registration now requires subject selection via checkboxes
+- Subjects filter based on selected class (class-specific subjects)
+- Student dashboard shows only selected subjects (tests, marks, results)
+- Password fields everywhere have show/hide toggle (eye icon)
+- All lint checks pass, dev server compiling successfully

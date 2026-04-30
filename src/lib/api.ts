@@ -81,14 +81,14 @@ export const studentsAPI = {
     return fetchAPI(`/students/${id}`)
   },
 
-  create: async (data: { username: string; password: string; name: string; classId: string; rollNo: string }) => {
+  create: async (data: { username: string; password: string; name: string; classId: string; rollNo: string; subjectIds?: string[] }) => {
     return fetchAPI('/students', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   },
 
-  update: async (id: string, data: { name?: string; classId?: string; rollNo?: string }) => {
+  update: async (id: string, data: { name?: string; classId?: string; rollNo?: string; subjectIds?: string[] }) => {
     return fetchAPI(`/students/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

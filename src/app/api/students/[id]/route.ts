@@ -26,6 +26,13 @@ export async function GET(
             },
           },
         },
+        studentSubjects: {
+          include: {
+            subject: {
+              select: { id: true, name: true, classId: true },
+            },
+          },
+        },
       },
     });
 
@@ -53,7 +60,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, classId, rollNo } = body;
+    const { name, classId, rollNo, subjectIds } = body;
 
     const student = await db.student.findUnique({
       where: { id },
@@ -89,8 +96,55 @@ export async function PUT(
         class: {
           select: { id: true, name: true },
         },
+        studentSubjects: {
+          include: {
+            subject: {
+              select: { id: true, name: true, classId: true },
+            },
+          },
+        },
       },
     });
+
+    // Update subject selections if subjectIds is provided
+    if (subjectIds !== undefined) {
+      // Delete existing student subjects
+      await db.studentSubject.deleteMany({
+        where: { studentId: id },
+      });
+
+      // Create new student subjects if any
+      if (Array.isArray(subjectIds) && subjectIds.length > 0) {
+        await db.studentSubject.createMany({
+          data: subjectIds.map((subjectId: string) => ({
+            studentId: id,
+            subjectId,
+          })),
+        });
+      }
+
+      // Re-fetch to include updated studentSubjects
+      const refreshedStudent = await db.student.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: { id: true, username: true, name: true },
+          },
+          class: {
+            select: { id: true, name: true },
+          },
+          studentSubjects: {
+            include: {
+              subject: {
+                select: { id: true, name: true, classId: true },
+              },
+            },
+          },
+        },
+      });
+
+      return NextResponse.json({ success: true, student: refreshedStudent });
+    }
 
     return NextResponse.json({ success: true, student: updatedStudent });
   } catch (error) {

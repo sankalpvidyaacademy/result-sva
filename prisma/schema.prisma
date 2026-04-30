@@ -38,6 +38,7 @@ model Subject {
   createdAt DateTime @default(now())
 
   teacherSubjects TeacherSubject[]
+  studentSubjects StudentSubject[]
   tests           Test[]
 
   @@unique([name, classId])
@@ -71,7 +72,19 @@ model Student {
   class    Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
   rollNo   String
 
-  marks    Marks[]
+  marks           Marks[]
+  studentSubjects StudentSubject[]
+}
+
+model StudentSubject {
+  id        String   @id @default(cuid())
+  studentId String
+  subjectId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, subjectId])
 }
 
 model Test {
