@@ -52,9 +52,13 @@ export async function getAdminDb(): Promise<AdminDb> {
   if (!adminDb) {
     const app = await getAdminApp()
     adminDb = app.firestore()
-    adminDb.settings({
-      preferRest: true,
-    })
+    try {
+      adminDb.settings({
+        preferRest: true,
+      })
+    } catch {
+      // Settings may already be applied in dev mode hot reload
+    }
   }
   return adminDb
 }

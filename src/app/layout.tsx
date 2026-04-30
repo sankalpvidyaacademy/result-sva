@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description: "A comprehensive result management system for managing test scheduling, marks, student performance, and results.",
   keywords: ["Sankalp", "Result Management", "Education", "Student Results", "Test Management"],
   authors: [{ name: "Sankalp" }],
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

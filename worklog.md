@@ -1,121 +1,23 @@
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Firebase Migration - Install SDK and create configuration
+Agent: Main
+Task: Fix "failed to load classes, teachers, test, students" error on login
 
 Work Log:
-- Installed Firebase SDK (v12.12.1) via bun
-- Created `/src/lib/firebase.ts` with client SDK initialization
-- Added `isFirebaseConfigured` flag to detect when Firebase env vars are set
-- Updated `.env` with NEXT_PUBLIC_FIREBASE_* placeholders
-- Created `.env.example` with setup instructions
-- Added `firebase:seed` script to package.json
+- Diagnosed root cause: `api.ts` was routing reads through `firebase-service.ts` (Firebase Client SDK) when `isFirebaseConfigured` was true, but Phase 2 Firestore rules require `request.auth != null` (Firebase Auth)
+- The app uses custom auth (session cookies), not Firebase Auth, so all client-side Firestore reads failed with "Missing or insufficient permissions"
+- Rewrote `src/lib/api.ts` to route ALL reads and writes through API routes (which use Firebase Admin SDK, bypassing security rules)
+- Added PUT handler for tests API route (`src/app/api/tests/[id]/route.ts`)
+- Added `FIRESTORE_PREFER_REST=true` and `GOOGLE_CLOUD_DISABLE_GRPC=1` env vars to `.env` to prevent gRPC crashes
+- Added try-catch around `adminDb.settings({ preferRest: true })` for dev mode hot reload
+- Added favicon reference to layout.tsx metadata
+- Verified all API endpoints work: login, classes, teachers, students, tests, subjects
+- Verified login with all three roles: Admin (shobhit), Teacher (teacher1), Student (student1)
+- Lint passes cleanly
 
 Stage Summary:
-- Firebase SDK installed and configured
-- Dual-mode support: Firebase when configured, Prisma/SQLite as fallback
-- Environment variables ready for Firebase project setup
-
----
-Task ID: 2
-Agent: Main Agent
-Task: Create Firebase service layer with all CRUD operations
-
-Work Log:
-- Created `/src/lib/firebase-service.ts` with comprehensive Firestore operations
-- Implemented all CRUD services: auth, classes, subjects, students, teachers, tests, marks, results, reports
-- All business logic preserved (2-day gap validation, max marks validation, ranking, weak subject detection, etc.)
-- Denormalized data model for efficient Firestore reads
-- Created real-time sync service with onSnapshot subscriptions
-- Created `/src/lib/use-realtime.ts` with React hooks for real-time data
-
-Stage Summary:
-- Complete Firebase service layer replacing all Prisma operations
-- Real-time sync hooks for students, teachers, tests, marks, classes, subjects
-- Denormalized Firestore schema: users, classes, subjects, students, teachers, tests, marks collections
-
----
-Task ID: 3
-Agent: Main Agent
-Task: Update api.ts to use Firebase service with fallback
-
-Work Log:
-- Rewrote `/src/lib/api.ts` with dual-mode support
-- When Firebase is configured: uses Firebase Client SDK directly
-- When Firebase is not configured: falls back to original fetch-based API routes (Prisma)
-- Lazy loading of Firebase services to avoid errors when not configured
-- All function signatures preserved for component compatibility
-
-Stage Summary:
-- Zero-impact migration: existing components work unchanged
-- Dual-mode: Firebase (primary) + Prisma (fallback)
-- Auth session cookies still managed via API routes
-
----
-Task ID: 4
-Agent: Main Agent
-Task: Update auth API routes for Firebase compatibility
-
-Work Log:
-- Updated `/src/app/api/auth/login/route.ts` to accept userId/role/name for cookie setting
-- Updated `/src/app/api/auth/change-password/route.ts` as passthrough (client-side Firebase handles actual change)
-- Session and logout routes unchanged (cookie-based)
-
-Stage Summary:
-- Auth API routes updated for Firebase compatibility
-- Session persistence via cookies maintained
-- Password changes handled client-side via Firebase when configured
-
----
-Task ID: 5
-Agent: Main Agent
-Task: Create Firebase seed script
-
-Work Log:
-- Created `/scripts/firebase-seed.ts` for populating Firestore with initial data
-- Seeds: admin user, 13 classes, subjects per class, 2 teachers, 5 students
-- Idempotent: checks for existing data before creating
-- Added `firebase:seed` script to package.json
-
-Stage Summary:
-- Seed script ready at `/scripts/firebase-seed.ts`
-- Run with: `bun run firebase:seed` after setting up Firebase project
-
----
-Task ID: 6
-Agent: Main Agent
-Task: Test and verify migration
-
-Work Log:
-- All lint checks pass clean
-- Dev server compiles successfully
-- Fallback mode (Prisma/SQLite) works when Firebase is not configured
-- Database seeded and ready for testing
-
-Stage Summary:
-- Migration complete with zero impact on existing functionality
-- App works in both modes: Firebase (when configured) and Prisma (fallback)
-- Ready for Firebase project setup and data seeding
-
----
-Task ID: 7
-Agent: Main Agent
-Task: Fix Firestore security rules, move secrets to env vars, verify app, polish UI
-
-Work Log:
-- Fixed critical Firestore rules bug: `request.origin != null` is NOT a valid Firestore rules field, causing all client reads to be blocked. Updated rules to `allow read: if true` for data collections while keeping all writes blocked (Phase 2)
-- Moved hardcoded Firebase Admin private key from `firebase-admin.ts` to `.env` environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
-- Updated `firebase-admin.ts` to read service account credentials from `process.env` instead of hardcoded values
-- Verified all API endpoints work: Login (admin/teacher/student), Classes (13 found), Students, Teachers, Tests
-- Fixed UI issues: Classes card was using `text-destructive` instead of `text-primary`, teacher/student dashboard had `bg-muted` inconsistent with admin dashboard, copyright year updated from 2024 to 2025 across all dashboards and login page
-- Ensured footer sticky positioning across all dashboards with proper `min-h-screen flex flex-col` wrapper and `mt-auto` on footer
-- Made header bars consistent across all 3 dashboards: `h-12`, `sticky top-0 z-40`
-- Lint passes clean with zero errors
-- Dev server runs successfully with no runtime errors
-
-Stage Summary:
-- Phase 2 Firestore rules fixed (reads allowed, writes blocked, sessions/auditLogs fully restricted)
-- Security: Firebase Admin private key moved from source code to environment variables
-- All 3 roles verified working: Admin (shobhit/Shobhit@1502), Teacher (teacher1/teacher123), Student (student1/student123)
-- UI polished with consistent styling across all dashboards
-- NOTE: Updated firestore.rules need to be re-deployed via `firebase deploy --only firestore:rules --project sankalp-result-system` when Firebase CLI auth is available
+- Root cause: Firebase Client SDK reads blocked by Phase 2 Firestore rules (no Firebase Auth)
+- Fix: All data access now goes through API routes using Firebase Admin SDK
+- All API endpoints return 200 with correct data from Firebase Firestore
+- Server may crash with rapid sequential curl requests but works correctly in browser
+- Credentials: Admin=shobhit/Shobhit@1502, Teacher=teacher1/teacher123, Student=student1/student123

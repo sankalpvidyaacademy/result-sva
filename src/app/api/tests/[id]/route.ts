@@ -69,6 +69,67 @@ export async function GET(
   }
 }
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const db = await getAdminDb();
+    const FieldValue = await import('@/lib/firebase-admin').then(m => m.getFieldValue());
+
+    const testSnap = await db.collection('tests').doc(id).get();
+    if (!testSnap.exists) {
+      return NextResponse.json(
+        { success: false, message: 'Test not found' },
+        { status: 404 }
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.date !== undefined) updateData.date = body.date;
+    if (body.maxMarks !== undefined) updateData.maxMarks = body.maxMarks;
+
+    if (Object.keys(updateData).length > 0) {
+      const fv = await FieldValue;
+      updateData.updatedAt = fv.serverTimestamp();
+      await db.collection('tests').doc(id).update(updateData);
+    }
+
+    // Fetch updated test
+    const updatedSnap = await db.collection('tests').doc(id).get();
+    const updated = docToObj<TestDoc>(updatedSnap);
+
+    const today = new Date().toISOString().split('T')[0];
+    let status: string;
+    if (updated.date === today) status = 'Today';
+    else if (updated.date > today) status = 'Upcoming';
+    else status = 'Completed';
+
+    return NextResponse.json({
+      success: true,
+      test: {
+        id: updated.id,
+        name: updated.name,
+        date: updated.date,
+        maxMarks: updated.maxMarks,
+        status,
+        subject: { id: updated.subjectId, name: updated.subjectName },
+        class: { id: updated.classId, name: updated.className },
+        teacher: { id: updated.teacherId, name: updated.teacherName },
+      },
+    });
+  } catch (error) {
+    console.error('Update test error:', error);
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
