@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, queryToObj, docToObj, type MarksDoc } from '@/lib/firebase-admin';
+import { adminMarksService } from '@/lib/firebase-admin-service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,46 +15,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const where: { testId?: string; studentId?: string } = {};
-    if (testId) where.testId = testId;
-    if (studentId) where.studentId = studentId;
+    const db = await getAdminDb();
 
-    const marks = await db.marks.findMany({
-      where,
-      include: {
+    let marksSnap;
+    if (testId) {
+      marksSnap = await db.collection('marks').where('testId', '==', testId).orderBy('studentRollNo').get();
+    } else {
+      marksSnap = await db.collection('marks').where('studentId', '==', studentId!).get();
+    }
+
+    const formatted = marksSnap.docs.map(d => {
+      const m = docToObj<MarksDoc>(d);
+      return {
+        id: m.id,
+        marks: m.marks,
         test: {
-          include: {
-            subject: { select: { id: true, name: true } },
-            class: { select: { id: true, name: true } },
-          },
+          id: m.testId,
+          name: m.testInfo.name,
+          date: m.testInfo.date,
+          maxMarks: m.testInfo.maxMarks,
+          subject: { id: m.testInfo.subjectId, name: m.testInfo.subjectName },
+          class: { id: m.testInfo.classId, name: m.testInfo.className },
         },
         student: {
-          include: {
-            user: { select: { id: true, name: true } },
-            class: { select: { id: true, name: true } },
-          },
+          id: m.studentId,
+          rollNo: m.studentRollNo,
+          name: m.studentName,
+          class: { id: m.testInfo.classId, name: m.testInfo.className },
         },
-      },
+      };
     });
-
-    const formatted = marks.map((m) => ({
-      id: m.id,
-      marks: m.marks,
-      test: {
-        id: m.test.id,
-        name: m.test.name,
-        date: m.test.date,
-        maxMarks: m.test.maxMarks,
-        subject: m.test.subject,
-        class: m.test.class,
-      },
-      student: {
-        id: m.student.id,
-        rollNo: m.student.rollNo,
-        name: m.student.user.name,
-        class: m.student.class,
-      },
-    }));
 
     return NextResponse.json({ success: true, marks: formatted });
   } catch (error) {
@@ -77,73 +68,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the test to validate maxMarks
-    const test = await db.test.findUnique({
-      where: { id: testId },
-    });
-
-    if (!test) {
-      return NextResponse.json(
-        { success: false, message: 'Test not found' },
-        { status: 404 }
-      );
-    }
-
-    // Validate all entries
-    for (const entry of entries) {
-      if (!entry.studentId || entry.marks === undefined || entry.marks === null) {
-        return NextResponse.json(
-          { success: false, message: 'Each entry must have studentId and marks' },
-          { status: 400 }
-        );
-      }
-
-      if (entry.marks > test.maxMarks) {
-        return NextResponse.json(
-          { success: false, message: `Marks ${entry.marks} exceed max marks ${test.maxMarks} for this test` },
-          { status: 400 }
-        );
-      }
-
-      if (entry.marks < 0) {
-        return NextResponse.json(
-          { success: false, message: 'Marks cannot be negative' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Bulk upsert marks
-    const results = await db.$transaction(
-      entries.map((entry: { studentId: string; marks: number }) =>
-        db.marks.upsert({
-          where: {
-            testId_studentId: {
-              testId,
-              studentId: entry.studentId,
-            },
-          },
-          update: {
-            marks: entry.marks,
-          },
-          create: {
-            testId,
-            studentId: entry.studentId,
-            marks: entry.marks,
-          },
-        })
-      )
-    );
+    const marks = await adminMarksService.create(testId, entries);
 
     return NextResponse.json(
-      { success: true, marks: results, count: results.length },
+      { success: true, marks, count: marks.length },
       { status: 201 }
     );
   } catch (error) {
     console.error('Create marks error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, docToObj, type StudentDoc, type SubjectDoc } from '@/lib/firebase-admin';
+import { adminStudentsService } from '@/lib/firebase-admin-service';
 
 export async function GET(
   _request: NextRequest,
@@ -8,42 +9,40 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const student = await db.student.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: { id: true, username: true, name: true },
-        },
-        class: {
-          select: { id: true, name: true },
-        },
-        marks: {
-          include: {
-            test: {
-              include: {
-                subject: { select: { id: true, name: true } },
-              },
-            },
-          },
-        },
-        studentSubjects: {
-          include: {
-            subject: {
-              select: { id: true, name: true, classId: true },
-            },
-          },
-        },
-      },
-    });
+    const db = await getAdminDb();
+    const studentSnap = await db.collection('students').doc(id).get();
 
-    if (!student) {
+    if (!studentSnap.exists) {
       return NextResponse.json(
         { success: false, message: 'Student not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, student });
+    const student = docToObj<StudentDoc>(studentSnap);
+
+    // Get subjects for this student
+    const studentSubjects = [];
+    for (const subjectId of student.subjectIds || []) {
+      const subSnap = await db.collection('subjects').doc(subjectId).get();
+      if (subSnap.exists) {
+        const sub = docToObj<SubjectDoc>(subSnap);
+        studentSubjects.push({
+          subjectId: sub.id,
+          subject: { id: sub.id, name: sub.name, classId: sub.classId },
+        });
+      }
+    }
+
+    const result = {
+      id: student.id,
+      rollNo: student.rollNo,
+      user: { id: student.userId, username: student.username, name: student.name },
+      class: { id: student.classId, name: student.className },
+      studentSubjects,
+    };
+
+    return NextResponse.json({ success: true, student: result });
   } catch (error) {
     console.error('Get student error:', error);
     return NextResponse.json(
@@ -62,97 +61,14 @@ export async function PUT(
     const body = await request.json();
     const { name, classId, rollNo, subjectIds } = body;
 
-    const student = await db.student.findUnique({
-      where: { id },
-    });
+    const student = await adminStudentsService.update(id, { name, classId, rollNo, subjectIds });
 
-    if (!student) {
-      return NextResponse.json(
-        { success: false, message: 'Student not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update user name if provided
-    if (name) {
-      await db.user.update({
-        where: { id: student.userId },
-        data: { name },
-      });
-    }
-
-    // Update student fields
-    const updateData: { classId?: string; rollNo?: string } = {};
-    if (classId) updateData.classId = classId;
-    if (rollNo) updateData.rollNo = rollNo;
-
-    const updatedStudent = await db.student.update({
-      where: { id },
-      data: updateData,
-      include: {
-        user: {
-          select: { id: true, username: true, name: true },
-        },
-        class: {
-          select: { id: true, name: true },
-        },
-        studentSubjects: {
-          include: {
-            subject: {
-              select: { id: true, name: true, classId: true },
-            },
-          },
-        },
-      },
-    });
-
-    // Update subject selections if subjectIds is provided
-    if (subjectIds !== undefined) {
-      // Delete existing student subjects
-      await db.studentSubject.deleteMany({
-        where: { studentId: id },
-      });
-
-      // Create new student subjects if any
-      if (Array.isArray(subjectIds) && subjectIds.length > 0) {
-        await db.studentSubject.createMany({
-          data: subjectIds.map((subjectId: string) => ({
-            studentId: id,
-            subjectId,
-          })),
-        });
-      }
-
-      // Re-fetch to include updated studentSubjects
-      const refreshedStudent = await db.student.findUnique({
-        where: { id },
-        include: {
-          user: {
-            select: { id: true, username: true, name: true },
-          },
-          class: {
-            select: { id: true, name: true },
-          },
-          studentSubjects: {
-            include: {
-              subject: {
-                select: { id: true, name: true, classId: true },
-              },
-            },
-          },
-        },
-      });
-
-      return NextResponse.json({ success: true, student: refreshedStudent });
-    }
-
-    return NextResponse.json({ success: true, student: updatedStudent });
+    return NextResponse.json({ success: true, student });
   } catch (error) {
     console.error('Update student error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('not found') ? 404 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }
 
@@ -162,30 +78,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-
-    const student = await db.student.findUnique({
-      where: { id },
-    });
-
-    if (!student) {
-      return NextResponse.json(
-        { success: false, message: 'Student not found' },
-        { status: 404 }
-      );
-    }
-
-    // Delete student and associated user (cascade will handle marks)
-    await db.$transaction(async (tx) => {
-      await tx.student.delete({ where: { id } });
-      await tx.user.delete({ where: { id: student.userId } });
-    });
-
+    await adminStudentsService.delete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete student error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('not found') ? 404 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

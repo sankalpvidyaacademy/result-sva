@@ -452,7 +452,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Classes</p>
-                        <p className="text-2xl font-bold text-destructive">{classes.length}</p>
+                        <p className="text-2xl font-bold text-primary">{classes.length}</p>
                       </div>
                       <GraduationCap className="w-8 h-8 text-primary/25" />
                     </div>
@@ -872,7 +872,7 @@ export default function AdminDashboard() {
 
           {/* Footer */}
           <footer className="bg-background border-t border-border py-3 mt-auto">
-            <p className="text-center text-xs text-muted-foreground">© 2024 Sankalp Result Management System</p>
+            <p className="text-center text-xs text-muted-foreground">© 2025 Sankalp Result Management System</p>
           </footer>
         </div>
 

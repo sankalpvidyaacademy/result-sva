@@ -1,29 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAdminDb, docToObj, type UserDoc } from '@/lib/firebase-admin';
 
-// Login route - sets session cookie
-// Credential validation is done client-side via Firebase
-// This route just sets the session cookie for server-side session persistence
+// Login route - validates credentials via Firebase Admin SDK and sets session cookie
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, role, name } = body;
+    const { username, password, role } = body;
 
-    if (!userId || !role || !name) {
+    if (!username || !password || !role) {
       return NextResponse.json(
-        { success: false, message: 'userId, role, and name are required' },
+        { success: false, message: 'username, password, and role are required' },
         { status: 400 }
       );
     }
 
+    const db = await getAdminDb();
+
+    // Find user by username
+    const userSnap = await db.collection('users').where('username', '==', username).get();
+
+    if (userSnap.empty) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    const user = docToObj<UserDoc>(userSnap.docs[0]);
+
+    // Validate password and role
+    if (user.password !== password || user.role !== role) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
     const sessionData = JSON.stringify({
-      userId,
-      role,
-      name,
+      userId: user.id,
+      role: user.role,
+      name: user.name,
     });
 
     const response = NextResponse.json({
       success: true,
-      user: { id: userId, role, name },
+      user: { id: user.id, username: user.username, role: user.role, name: user.name },
     });
 
     response.cookies.set('sankalp_session', sessionData, {

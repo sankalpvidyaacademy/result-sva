@@ -1,25 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, queryToObj, type SubjectDoc } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
 
-    const where: Record<string, string> = {};
+    const db = await getAdminDb();
+
+    let subjectsSnap;
     if (classId) {
-      where.classId = classId;
+      subjectsSnap = await db.collection('subjects').where('classId', '==', classId).get();
+    } else {
+      subjectsSnap = await db.collection('subjects').orderBy('name').get();
     }
 
-    const subjects = await db.subject.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      include: {
-        class: {
-          select: { id: true, name: true },
-        },
-      },
-    });
+    const subjects = queryToObj<SubjectDoc>(subjectsSnap);
+    // Sort client-side to avoid composite index requirement
+    if (classId) {
+      subjects.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
 
     return NextResponse.json({ success: true, subjects });
   } catch (error) {

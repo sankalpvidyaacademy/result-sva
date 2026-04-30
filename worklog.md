@@ -96,3 +96,26 @@ Stage Summary:
 - Migration complete with zero impact on existing functionality
 - App works in both modes: Firebase (when configured) and Prisma (fallback)
 - Ready for Firebase project setup and data seeding
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Fix Firestore security rules, move secrets to env vars, verify app, polish UI
+
+Work Log:
+- Fixed critical Firestore rules bug: `request.origin != null` is NOT a valid Firestore rules field, causing all client reads to be blocked. Updated rules to `allow read: if true` for data collections while keeping all writes blocked (Phase 2)
+- Moved hardcoded Firebase Admin private key from `firebase-admin.ts` to `.env` environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
+- Updated `firebase-admin.ts` to read service account credentials from `process.env` instead of hardcoded values
+- Verified all API endpoints work: Login (admin/teacher/student), Classes (13 found), Students, Teachers, Tests
+- Fixed UI issues: Classes card was using `text-destructive` instead of `text-primary`, teacher/student dashboard had `bg-muted` inconsistent with admin dashboard, copyright year updated from 2024 to 2025 across all dashboards and login page
+- Ensured footer sticky positioning across all dashboards with proper `min-h-screen flex flex-col` wrapper and `mt-auto` on footer
+- Made header bars consistent across all 3 dashboards: `h-12`, `sticky top-0 z-40`
+- Lint passes clean with zero errors
+- Dev server runs successfully with no runtime errors
+
+Stage Summary:
+- Phase 2 Firestore rules fixed (reads allowed, writes blocked, sessions/auditLogs fully restricted)
+- Security: Firebase Admin private key moved from source code to environment variables
+- All 3 roles verified working: Admin (shobhit/Shobhit@1502), Teacher (teacher1/teacher123), Student (student1/student123)
+- UI polished with consistent styling across all dashboards
+- NOTE: Updated firestore.rules need to be re-deployed via `firebase deploy --only firestore:rules --project sankalp-result-system` when Firebase CLI auth is available

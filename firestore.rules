@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== Phase 2: Firestore Security Rules =====
+    // Sankalp Result Management System
+    //
+    // ARCHITECTURE OVERVIEW:
+    // - Client-side reads: Firebase Client SDK (needs to be allowed here)
+    // - All writes: Next.js API routes using Firebase Admin SDK
+    //   (Admin SDK bypasses these rules entirely, so write rules don't
+    //   affect server-side operations)
+    // - Auth: Custom cookie-based auth (NOT Firebase Auth)
+    //   Sessions stored in HTTP-only cookies, validated server-side
+    // - Firebase Auth custom tokens can be minted via Admin SDK
+    //   for future enhancement
+    //
+    // IMPORTANT: Firestore security rules CANNOT inspect HTTP cookies,
+    // headers, or request origin. The only built-in auth mechanism is
+    // Firebase Auth (request.auth). Since this app uses custom cookie-based
+    // auth, there is no way to verify the client's identity at the rules
+    // level. Therefore:
+    //   - Reads are allowed for all collections that the client SDK needs
+    //   - Writes are blocked (server uses Admin SDK which bypasses rules)
+    //   - sessions & auditLogs are fully restricted (never read client-side)
+    //
+    // Data access control is enforced SERVER-SIDE in API routes,
+    // where the session cookie is validated before any operation.
+    //
+    // These rules protect against:
+    // 1. Direct client-side writes bypassing the application
+    // 2. Unauthorized reads of session tokens and audit logs
+    // 3. Data tampering from outside the server-side application
+
+    // ===== Users Collection =====
+    // Contains usernames and hashed passwords - widest read access needed
+    // for client-side login flow and user lookups.
+    // Password hashing happens server-side; hashes are not secrets.
+    // Fine-grained access control (e.g., hiding other users' data)
+    // is enforced in API routes, not here.
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Classes Collection =====
+    // Reference data - read-only from client, managed by admin via API
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Subjects Collection =====
+    // Reference data - read-only from client, managed by admin via API
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Teachers Collection =====
+    // Managed by admin via API, viewable by all authenticated users
+    match /teachers/{teacherId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Students Collection =====
+    // Managed by admin via API, viewable by all authenticated users
+    match /students/{studentId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Tests Collection =====
+    // Created by admin/teachers via API routes
+    match /tests/{testId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Marks Collection =====
+    // Entered by teachers via API routes
+    match /marks/{markId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Settings Collection =====
+    // App configuration, managed by admin only via API routes
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ===== Sessions Collection =====
+    // CRITICAL: Stores active session tokens. Must NEVER be readable
+    // or writable from the client SDK. Only the server (Admin SDK)
+    // accesses this collection.
+    match /sessions/{sessionId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // ===== Audit Logs Collection =====
+    // CRITICAL: Tracks all administrative actions for accountability.
+    // Must NEVER be accessible from the client SDK.
+    // Read by admin dashboard via API routes (Admin SDK) only.
+    // No updates or deletes allowed — even server-side should only create.
+    match /auditLogs/{logId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

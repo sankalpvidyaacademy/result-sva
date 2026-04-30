@@ -290,14 +290,15 @@ export default function TeacherDashboard() {
       />
       <SidebarInset>
         {/* Top Header Bar */}
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-10">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-40">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <h2 className="text-sm font-semibold text-foreground">{PAGE_TITLES[activeTab] || activeTab}</h2>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-4 py-4 bg-muted">
+        <div className="flex-1 flex flex-col min-h-0">
+          <main className="flex-1 px-4 py-4 md:px-6">
           {/* ===== MY SUBJECTS ===== */}
           {activeTab === 'subjects' && (
             <>
@@ -672,8 +673,9 @@ export default function TeacherDashboard() {
 
         {/* Footer */}
         <footer className="bg-background border-t border-border py-3 mt-auto">
-          <p className="text-center text-xs text-muted-foreground">© 2024 Sankalp Result Management System</p>
+          <p className="text-center text-xs text-muted-foreground">© 2025 Sankalp Result Management System</p>
         </footer>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

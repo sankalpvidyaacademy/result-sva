@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, docToObj, queryToObj, type StudentDoc, type SubjectDoc, type TestDoc, type MarksDoc } from '@/lib/firebase-admin';
 
 export async function GET(
   _request: NextRequest,
@@ -7,60 +7,39 @@ export async function GET(
 ) {
   try {
     const { studentId } = await params;
+    const db = await getAdminDb();
 
-    const student = await db.student.findUnique({
-      where: { id: studentId },
-      include: {
-        user: { select: { id: true, name: true, username: true } },
-        class: {
-          include: {
-            subjects: { orderBy: { name: 'asc' } },
-          },
-        },
-        marks: {
-          include: {
-            test: {
-              include: {
-                subject: { select: { id: true, name: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!student) {
+    const studentSnap = await db.collection('students').doc(studentId).get();
+    if (!studentSnap.exists) {
       return NextResponse.json(
         { success: false, message: 'Student not found' },
         { status: 404 }
       );
     }
+    const student = docToObj<StudentDoc>(studentSnap);
 
-    // Get all completed tests for the class
+    // Get subjects for this class
+    const subjectsSnap = await db.collection('subjects').where('classId', '==', student.classId).orderBy('name').get();
+    const subjects = queryToObj<SubjectDoc>(subjectsSnap);
+
+    // Get completed tests for this class
     const today = new Date().toISOString().split('T')[0];
-    const tests = await db.test.findMany({
-      where: {
-        classId: student.classId,
-        date: { lte: today },
-      },
-      orderBy: { date: 'asc' },
-      include: {
-        subject: { select: { id: true, name: true } },
-        marks: true,
-      },
-    });
+    const testsSnap = await db.collection('tests').where('classId', '==', student.classId).orderBy('date', 'asc').get();
+    const allTests = queryToObj<TestDoc>(testsSnap);
+    const tests = allTests.filter(t => t.date <= today);
+
+    // Get student's marks
+    const marksSnap = await db.collection('marks').where('studentId', '==', studentId).get();
+    const studentMarks = queryToObj<MarksDoc>(marksSnap);
 
     // Build subject-wise marks
     const subjectWise: Record<string, {
-      subjectId: string;
-      subjectName: string;
-      tests: { testId: string; testName: string; date: string; marks: number; maxMarks: number }[];
-      totalMarks: number;
-      totalMaxMarks: number;
-      percentage: number;
+      subjectId: string; subjectName: string
+      tests: { testId: string; testName: string; date: string; marks: number; maxMarks: number }[]
+      totalMarks: number; totalMaxMarks: number; percentage: number
     }> = {};
 
-    for (const subject of student.class.subjects) {
+    for (const subject of subjects) {
       subjectWise[subject.id] = {
         subjectId: subject.id,
         subjectName: subject.name,
@@ -74,19 +53,14 @@ export async function GET(
     let grandTotal = 0;
     let grandTotalMax = 0;
 
-    // Test-wise marks
     const testWise: {
-      testId: string;
-      testName: string;
-      date: string;
-      subjectId: string;
-      subjectName: string;
-      marks: number;
-      maxMarks: number;
+      testId: string; testName: string; date: string
+      subjectId: string; subjectName: string
+      marks: number; maxMarks: number
     }[] = [];
 
     for (const test of tests) {
-      const markEntry = student.marks.find((m) => m.testId === test.id);
+      const markEntry = studentMarks.find(m => m.testId === test.id);
       const obtainedMarks = markEntry ? markEntry.marks : 0;
 
       testWise.push({
@@ -94,12 +68,11 @@ export async function GET(
         testName: test.name,
         date: test.date,
         subjectId: test.subjectId,
-        subjectName: test.subject.name,
+        subjectName: test.subjectName,
         marks: obtainedMarks,
         maxMarks: test.maxMarks,
       });
 
-      // Add to subject-wise
       if (subjectWise[test.subjectId]) {
         subjectWise[test.subjectId].tests.push({
           testId: test.id,
@@ -136,31 +109,36 @@ export async function GET(
     const overallPercentage = grandTotalMax > 0 ? Math.round((grandTotal / grandTotalMax) * 100 * 100) / 100 : 0;
 
     // Calculate rank in class
-    // Get all students in the class with their total marks
-    const classStudents = await db.student.findMany({
-      where: { classId: student.classId },
-      include: {
-        marks: {
-          where: {
-            testId: { in: tests.map((t) => t.id) },
-          },
-        },
-      },
-    });
+    const classStudentsSnap = await db.collection('students').where('classId', '==', student.classId).get();
+    const classStudentIds = classStudentsSnap.docs.map(d => d.id);
 
-    const studentTotals = classStudents.map((s) => ({
-      studentId: s.id,
-      totalMarks: s.marks.reduce((sum, m) => sum + m.marks, 0),
-    }));
+    const classMarks: { studentId: string; marks: number }[] = [];
+    for (const test of tests) {
+      const testMarksSnap = await db.collection('marks').where('testId', '==', test.id).get();
+      for (const markDoc of testMarksSnap.docs) {
+        const m = docToObj<MarksDoc>(markDoc);
+        const existing = classMarks.find(cm => cm.studentId === m.studentId);
+        if (existing) {
+          existing.marks += m.marks;
+        } else {
+          classMarks.push({ studentId: m.studentId, marks: m.marks });
+        }
+      }
+    }
 
-    studentTotals.sort((a, b) => b.totalMarks - a.totalMarks);
+    for (const sid of classStudentIds) {
+      if (!classMarks.find(cm => cm.studentId === sid)) {
+        classMarks.push({ studentId: sid, marks: 0 });
+      }
+    }
 
+    classMarks.sort((a, b) => b.marks - a.marks);
     let rank = 1;
-    for (let i = 0; i < studentTotals.length; i++) {
-      if (i > 0 && studentTotals[i].totalMarks < studentTotals[i - 1].totalMarks) {
+    for (let i = 0; i < classMarks.length; i++) {
+      if (i > 0 && classMarks[i].marks < classMarks[i - 1].marks) {
         rank = i + 1;
       }
-      if (studentTotals[i].studentId === studentId) {
+      if (classMarks[i].studentId === studentId) {
         break;
       }
     }
@@ -169,10 +147,10 @@ export async function GET(
       success: true,
       student: {
         id: student.id,
-        name: student.user.name,
-        username: student.user.username,
+        name: student.name,
+        username: student.username,
         rollNo: student.rollNo,
-        class: { id: student.class.id, name: student.class.name },
+        class: { id: student.classId, name: student.className },
       },
       subjectWise: Object.values(subjectWise),
       testWise,
@@ -180,7 +158,7 @@ export async function GET(
       totalMaxMarks: grandTotalMax,
       percentage: overallPercentage,
       rank,
-      totalStudents: classStudents.length,
+      totalStudents: classStudentIds.length,
       weakSubject,
     });
   } catch (error) {

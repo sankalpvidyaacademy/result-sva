@@ -1,37 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, queryToObj, docToObj, type StudentDoc, type SubjectDoc } from '@/lib/firebase-admin';
+import { adminStudentsService } from '@/lib/firebase-admin-service';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
 
-    const where: { classId?: string } = {};
+    const db = await getAdminDb();
+
+    // Get students
+    let studentsSnap;
     if (classId) {
-      where.classId = classId;
+      studentsSnap = await db.collection('students').where('classId', '==', classId).orderBy('rollNo').get();
+    } else {
+      studentsSnap = await db.collection('students').orderBy('rollNo').get();
     }
 
-    const students = await db.student.findMany({
-      where,
-      orderBy: { rollNo: 'asc' },
-      include: {
-        user: {
-          select: { id: true, username: true, name: true },
-        },
-        class: {
-          select: { id: true, name: true },
-        },
-        studentSubjects: {
-          include: {
-            subject: {
-              select: { id: true, name: true, classId: true },
-            },
-          },
-        },
-      },
-    });
+    const students = queryToObj<StudentDoc>(studentsSnap);
 
-    return NextResponse.json({ success: true, students });
+    // Get all subjects for resolving names
+    const subjectsSnap = await db.collection('subjects').orderBy('name').get();
+    const allSubjects = queryToObj<SubjectDoc>(subjectsSnap);
+
+    // Transform to match the existing interface expected by components
+    const transformed = students.map(s => ({
+      id: s.id,
+      rollNo: s.rollNo,
+      user: { id: s.userId, username: s.username, name: s.name },
+      class: { id: s.classId, name: s.className },
+      studentSubjects: s.subjectIds?.map(sid => {
+        const sub = allSubjects.find(as => as.id === sid);
+        return {
+          subjectId: sid,
+          subject: { id: sid, name: sub?.name || '', classId: sub?.classId || s.classId },
+        };
+      }) || [],
+    }));
+
+    return NextResponse.json({ success: true, students: transformed });
   } catch (error) {
     console.error('Get students error:', error);
     return NextResponse.json(
@@ -53,88 +60,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
-    const existingUser = await db.user.findUnique({
-      where: { username },
-    });
+    const student = await adminStudentsService.create({ username, password, name, classId, rollNo, subjectIds });
 
-    if (existingUser) {
-      return NextResponse.json(
-        { success: false, message: 'Username already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Check if class exists
-    const classExists = await db.class.findUnique({
-      where: { id: classId },
-    });
-
-    if (!classExists) {
-      return NextResponse.json(
-        { success: false, message: 'Class not found' },
-        { status: 404 }
-      );
-    }
-
-    // Create User + Student in a transaction
-    const result = await db.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          username,
-          password,
-          role: 'STUDENT',
-          name,
-        },
-      });
-
-      const student = await tx.student.create({
-        data: {
-          userId: user.id,
-          classId,
-          rollNo,
-        },
-      });
-
-      // Create StudentSubject records for selected subjects
-      if (subjectIds && Array.isArray(subjectIds) && subjectIds.length > 0) {
-        await tx.studentSubject.createMany({
-          data: subjectIds.map((subjectId: string) => ({
-            studentId: student.id,
-            subjectId,
-          })),
-        });
-      }
-
-      // Fetch the student with all relations including studentSubjects
-      const studentWithRelations = await tx.student.findUnique({
-        where: { id: student.id },
-        include: {
-          user: {
-            select: { id: true, username: true, name: true },
-          },
-          class: {
-            select: { id: true, name: true },
-          },
-          studentSubjects: {
-            include: {
-              subject: {
-                select: { id: true, name: true, classId: true },
-              },
-            },
-          },
-        },
-      });
-
-      return studentWithRelations;
-    });
-
-    return NextResponse.json({ success: true, student: result }, { status: 201 });
+    return NextResponse.json({ success: true, student }, { status: 201 });
   } catch (error) {
     console.error('Create student error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('already exists') ? 409 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

@@ -1,40 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { getAdminDb, queryToObj, type TeacherDoc } from '@/lib/firebase-admin';
+import { adminTeachersService } from '@/lib/firebase-admin-service';
 
 export async function GET() {
   try {
-    const teachers = await db.teacher.findMany({
-      orderBy: { user: { name: 'asc' } },
-      include: {
-        user: {
-          select: { id: true, username: true, name: true },
-        },
-        teacherSubjects: {
-          include: {
-            subject: {
-              include: {
-                class: {
-                  select: { id: true, name: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const db = await getAdminDb();
+    const teachersSnap = await db.collection('teachers').orderBy('name').get();
+    const teachers = queryToObj<TeacherDoc>(teachersSnap);
 
-    // Transform the data to a cleaner format
-    const formatted = teachers.map((teacher) => ({
+    // Transform to match the existing interface
+    const formatted = teachers.map(teacher => ({
       id: teacher.id,
       userId: teacher.userId,
-      user: teacher.user,
-      subjects: teacher.teacherSubjects.map((ts) => ({
-        id: ts.id,
-        subjectId: ts.subjectId,
-        subjectName: ts.subject.name,
-        classId: ts.subject.classId,
-        className: ts.subject.class.name,
-      })),
+      user: { id: teacher.userId, username: teacher.username, name: teacher.name },
+      subjects: teacher.subjects || [],
     }));
 
     return NextResponse.json({ success: true, teachers: formatted });
@@ -47,7 +26,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { username, password, name, subjects } = body;
@@ -66,97 +45,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
-    const existingUser = await db.user.findUnique({
-      where: { username },
-    });
+    const teacher = await adminTeachersService.create({ username, password, name, subjects });
 
-    if (existingUser) {
-      return NextResponse.json(
-        { success: false, message: 'Username already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Validate all subject assignments
-    for (const sub of subjects) {
-      if (!sub.classId || !sub.subjectId) {
-        return NextResponse.json(
-          { success: false, message: 'Each subject assignment must have classId and subjectId' },
-          { status: 400 }
-        );
-      }
-
-      const subject = await db.subject.findUnique({
-        where: { id: sub.subjectId },
-      });
-
-      if (!subject || subject.classId !== sub.classId) {
-        return NextResponse.json(
-          { success: false, message: `Subject ${sub.subjectId} does not belong to class ${sub.classId}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Create User + Teacher + TeacherSubjects in a transaction
-    const result = await db.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          username,
-          password,
-          role: 'TEACHER',
-          name,
-        },
-      });
-
-      const teacher = await tx.teacher.create({
-        data: {
-          userId: user.id,
-        },
-      });
-
-      // Create all teacher-subject assignments
-      const teacherSubjects = await Promise.all(
-        subjects.map((sub: { classId: string; subjectId: string }) =>
-          tx.teacherSubject.create({
-            data: {
-              teacherId: teacher.id,
-              subjectId: sub.subjectId,
-            },
-            include: {
-              subject: {
-                include: {
-                  class: {
-                    select: { id: true, name: true },
-                  },
-                },
-              },
-            },
-          })
-        )
-      );
-
-      return {
-        id: teacher.id,
-        userId: user.id,
-        user: { id: user.id, username: user.username, name: user.name },
-        subjects: teacherSubjects.map((ts) => ({
-          id: ts.id,
-          subjectId: ts.subjectId,
-          subjectName: ts.subject.name,
-          classId: ts.subject.classId,
-          className: ts.subject.class.name,
-        })),
-      };
-    });
-
-    return NextResponse.json({ success: true, teacher: result }, { status: 201 });
+    return NextResponse.json({ success: true, teacher }, { status: 201 });
   } catch (error) {
     console.error('Create teacher error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('already exists') ? 409 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

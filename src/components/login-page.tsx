@@ -136,7 +136,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2024 Sankalp Result Management System
+          © 2025 Sankalp Result Management System
         </p>
       </div>
     </div>

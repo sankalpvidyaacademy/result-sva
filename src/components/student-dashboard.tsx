@@ -208,7 +208,7 @@ export default function StudentDashboard() {
       />
       <SidebarInset>
         {/* Top header bar */}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-10">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4 sticky top-0 z-40">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <h1 className="text-sm font-semibold text-foreground">{PAGE_TITLES[activeTab] || activeTab}</h1>
@@ -224,7 +224,7 @@ export default function StudentDashboard() {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-h-0">
-          <main className="flex-1 p-4 bg-muted">
+          <main className="flex-1 p-4 md:px-6">
             {/* ===== MY TESTS ===== */}
             {activeTab === 'tests' && (
               loadingTests ? (
@@ -480,7 +480,7 @@ export default function StudentDashboard() {
 
           {/* Footer */}
           <footer className="bg-background border-t border-border py-3 mt-auto">
-            <p className="text-center text-xs text-muted-foreground">&copy; 2024 Sankalp Result Management System</p>
+            <p className="text-center text-xs text-muted-foreground">&copy; 2025 Sankalp Result Management System</p>
           </footer>
         </div>
       </SidebarInset>

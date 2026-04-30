@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { adminMarksService } from '@/lib/firebase-admin-service';
 
 export async function PUT(
   request: NextRequest,
@@ -17,83 +17,13 @@ export async function PUT(
       );
     }
 
-    const existingMark = await db.marks.findUnique({
-      where: { id },
-      include: { test: true },
-    });
-
-    if (!existingMark) {
-      return NextResponse.json(
-        { success: false, message: 'Mark entry not found' },
-        { status: 404 }
-      );
-    }
-
-    if (marks > existingMark.test.maxMarks) {
-      return NextResponse.json(
-        { success: false, message: `Marks ${marks} exceed max marks ${existingMark.test.maxMarks}` },
-        { status: 400 }
-      );
-    }
-
-    if (marks < 0) {
-      return NextResponse.json(
-        { success: false, message: 'Marks cannot be negative' },
-        { status: 400 }
-      );
-    }
-
-    const updated = await db.marks.update({
-      where: { id },
-      data: { marks },
-      include: {
-        test: {
-          select: { id: true, name: true, maxMarks: true },
-        },
-        student: {
-          include: {
-            user: { select: { id: true, name: true } },
-          },
-        },
-      },
-    });
-
-    return NextResponse.json({ success: true, mark: updated });
-  } catch (error) {
-    console.error('Update mark error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    const mark = await db.marks.findUnique({
-      where: { id },
-    });
-
-    if (!mark) {
-      return NextResponse.json(
-        { success: false, message: 'Mark entry not found' },
-        { status: 404 }
-      );
-    }
-
-    await db.marks.delete({ where: { id } });
+    await adminMarksService.update(id, marks);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Delete mark error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Update mark error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('not found') ? 404 : message.includes('exceed') || message.includes('negative') ? 400 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

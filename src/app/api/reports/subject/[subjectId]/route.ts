@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, docToObj, queryToObj, type SubjectDoc, type TestDoc, type MarksDoc, type StudentDoc } from '@/lib/firebase-admin';
+
+const getGrade = (pct: number): string => {
+  if (pct >= 90) return 'A+';
+  if (pct >= 80) return 'A';
+  if (pct >= 70) return 'B+';
+  if (pct >= 60) return 'B';
+  if (pct >= 50) return 'C';
+  if (pct >= 40) return 'D';
+  return 'F';
+};
 
 export async function GET(
   request: NextRequest,
@@ -11,75 +21,50 @@ export async function GET(
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
 
-    const subject = await db.subject.findUnique({
-      where: { id: subjectId },
-      include: {
-        class: {
-          select: { id: true, name: true },
-        },
-      },
-    });
+    const db = await getAdminDb();
 
-    if (!subject) {
+    const subjectSnap = await db.collection('subjects').doc(subjectId).get();
+    if (!subjectSnap.exists) {
       return NextResponse.json(
         { success: false, message: 'Subject not found' },
         { status: 404 }
       );
     }
+    const subject = docToObj<SubjectDoc>(subjectSnap);
 
-    // Get all tests for this subject, filtered by date range
+    // Get tests for this subject, filtered by date range
     const today = new Date().toISOString().split('T')[0];
-    const dateFilter: { lte: string; gte?: string } = { lte: today };
-    if (fromDate && toDate) {
-      dateFilter.gte = fromDate;
-      dateFilter.lte = toDate;
-    } else if (fromDate) {
-      dateFilter.gte = fromDate;
-    } else if (toDate) {
-      dateFilter.lte = toDate;
-    }
+    const testsSnap = await db.collection('tests').where('subjectId', '==', subjectId).orderBy('date', 'asc').get();
+    let tests = queryToObj<TestDoc>(testsSnap).filter(t => t.date <= today);
 
-    const tests = await db.test.findMany({
-      where: {
-        subjectId,
-        date: dateFilter,
-      },
-      orderBy: { date: 'asc' },
-      include: {
-        marks: {
-          include: {
-            student: {
-              include: {
-                user: { select: { id: true, name: true } },
-              },
-            },
-          },
-        },
-      },
-    });
+    if (fromDate) tests = tests.filter(t => t.date >= fromDate);
+    if (toDate) tests = tests.filter(t => t.date <= toDate);
 
     const totalMaxMarks = tests.reduce((sum, t) => sum + t.maxMarks, 0);
 
     // Get all students in the class
-    const students = await db.student.findMany({
-      where: { classId: subject.classId },
-      orderBy: { rollNo: 'asc' },
-      include: {
-        user: { select: { id: true, name: true } },
-      },
-    });
+    const studentsSnap = await db.collection('students').where('classId', '==', subject.classId).orderBy('rollNo').get();
+    const students = queryToObj<StudentDoc>(studentsSnap);
+
+    // Get marks for all tests
+    const testMarks: Record<string, MarksDoc[]> = {};
+    for (const test of tests) {
+      const marksSnap = await db.collection('marks').where('testId', '==', test.id).get();
+      testMarks[test.id] = queryToObj<MarksDoc>(marksSnap);
+    }
 
     // Build per-student results for this subject
-    const studentResults = students.map((student) => {
+    const studentResults = students.map(student => {
       let totalMarks = 0;
-      const testMarks: { testId: string; testName: string; date: string; marks: number; maxMarks: number }[] = [];
+      const testMarksList: { testId: string; testName: string; date: string; marks: number; maxMarks: number }[] = [];
 
       for (const test of tests) {
-        const markEntry = test.marks.find((m) => m.studentId === student.id);
+        const marks = testMarks[test.id] || [];
+        const markEntry = marks.find(m => m.studentId === student.id);
         const obtainedMarks = markEntry ? markEntry.marks : 0;
         totalMarks += obtainedMarks;
 
-        testMarks.push({
+        testMarksList.push({
           testId: test.id,
           testName: test.name,
           date: test.date,
@@ -93,11 +78,11 @@ export async function GET(
       return {
         studentId: student.id,
         rollNo: student.rollNo,
-        name: student.user.name,
+        name: student.name,
         totalMarks,
         totalMaxMarks,
         percentage,
-        testMarks,
+        testMarks: testMarksList,
         rank: 0,
       };
     });
@@ -124,14 +109,15 @@ export async function GET(
     const lowestMarks = studentResults.length > 0 ? studentResults[studentResults.length - 1].totalMarks : 0;
 
     // Per-test statistics
-    const testStatistics = tests.map((test) => {
-      const marksList = test.marks.map((m) => m.marks);
+    const testStatistics = tests.map(test => {
+      const marks = testMarks[test.id] || [];
+      const marksList = marks.map(m => m.marks);
       const avg = marksList.length > 0
         ? Math.round(marksList.reduce((sum, m) => sum + m, 0) / marksList.length * 100) / 100
         : 0;
       const highest = marksList.length > 0 ? Math.max(...marksList) : 0;
       const lowest = marksList.length > 0 ? Math.min(...marksList) : 0;
-      const passCount = marksList.filter((m) => m >= test.maxMarks * 0.4).length;
+      const passCount = marksList.filter(m => m >= test.maxMarks * 0.4).length;
       const passPercentage = marksList.length > 0
         ? Math.round((passCount / marksList.length) * 100 * 100) / 100
         : 0;
@@ -151,16 +137,6 @@ export async function GET(
     });
 
     // Grade distribution
-    const getGrade = (pct: number): string => {
-      if (pct >= 90) return 'A+';
-      if (pct >= 80) return 'A';
-      if (pct >= 70) return 'B+';
-      if (pct >= 60) return 'B';
-      if (pct >= 50) return 'C';
-      if (pct >= 40) return 'D';
-      return 'F';
-    };
-
     const gradeDistribution: Record<string, number> = {};
     for (const sr of studentResults) {
       const grade = getGrade(sr.percentage);
@@ -173,7 +149,7 @@ export async function GET(
         subject: {
           id: subject.id,
           name: subject.name,
-          class: subject.class,
+          class: { id: subject.classId, name: subject.className },
         },
         totalTests: tests.length,
         totalMaxMarks,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getAdminDb, docToObj, type TestDoc, type MarksDoc } from '@/lib/firebase-admin';
+import { adminTestsService } from '@/lib/firebase-admin-service';
 
 export async function GET(
   _request: NextRequest,
@@ -8,45 +9,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const test = await db.test.findUnique({
-      where: { id },
-      include: {
-        subject: {
-          select: { id: true, name: true },
-        },
-        class: {
-          select: { id: true, name: true },
-        },
-        teacher: {
-          include: {
-            user: {
-              select: { id: true, name: true },
-            },
-          },
-        },
-        marks: {
-          include: {
-            student: {
-              include: {
-                user: {
-                  select: { id: true, name: true },
-                },
-              },
-            },
-          },
-          orderBy: {
-            student: { rollNo: 'asc' },
-          },
-        },
-      },
-    });
+    const db = await getAdminDb();
+    const testSnap = await db.collection('tests').doc(id).get();
 
-    if (!test) {
+    if (!testSnap.exists) {
       return NextResponse.json(
         { success: false, message: 'Test not found' },
         { status: 404 }
       );
     }
+
+    const test = docToObj<TestDoc>(testSnap);
 
     const today = new Date().toISOString().split('T')[0];
     let status: string;
@@ -57,6 +30,21 @@ export async function GET(
     } else {
       status = 'Completed';
     }
+
+    // Get marks for this test
+    const marksSnap = await db.collection('marks').where('testId', '==', id).orderBy('studentRollNo').get();
+    const marks = marksSnap.docs.map(d => {
+      const m = docToObj<MarksDoc>(d);
+      return {
+        id: m.id,
+        marks: m.marks,
+        student: {
+          id: m.studentId,
+          rollNo: m.studentRollNo,
+          name: m.studentName,
+        },
+      };
+    });
 
     const formatted = {
       id: test.id,
@@ -64,187 +52,16 @@ export async function GET(
       date: test.date,
       maxMarks: test.maxMarks,
       status,
-      subject: test.subject,
-      class: test.class,
-      teacher: {
-        id: test.teacher.id,
-        name: test.teacher.user.name,
-      },
-      marks: test.marks.map((m) => ({
-        id: m.id,
-        marks: m.marks,
-        student: {
-          id: m.student.id,
-          rollNo: m.student.rollNo,
-          name: m.student.user.name,
-        },
-      })),
-      createdAt: test.createdAt,
+      subject: { id: test.subjectId, name: test.subjectName },
+      class: { id: test.classId, name: test.className },
+      teacher: { id: test.teacherId, name: test.teacherName },
+      marks,
+      marksCount: marks.length,
     };
 
     return NextResponse.json({ success: true, test: formatted });
   } catch (error) {
     console.error('Get test error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const { name, classId, subjectId, teacherId, date, maxMarks } = body;
-
-    const existingTest = await db.test.findUnique({
-      where: { id },
-    });
-
-    if (!existingTest) {
-      return NextResponse.json(
-        { success: false, message: 'Test not found' },
-        { status: 404 }
-      );
-    }
-
-    // If date or classId is changing, re-validate the gap constraint
-    const newDate = date || existingTest.date;
-    const newClassId = classId || existingTest.classId;
-
-    if (date || classId) {
-      // Check only 1 test per day per class (excluding current test)
-      const conflictTest = await db.test.findFirst({
-        where: {
-          classId: newClassId,
-          date: newDate,
-          id: { not: id },
-        },
-      });
-
-      if (conflictTest) {
-        return NextResponse.json(
-          { success: false, message: `A test is already scheduled for this class on ${newDate}.` },
-          { status: 409 }
-        );
-      }
-
-      // Check 2-day gap (excluding current test)
-      const otherTests = await db.test.findMany({
-        where: {
-          classId: newClassId,
-          id: { not: id },
-        },
-        select: { date: true, name: true },
-      });
-
-      const newDateObj = new Date(newDate);
-      for (const other of otherTests) {
-        const otherDateObj = new Date(other.date);
-        const diffDays = Math.abs(
-          (newDateObj.getTime() - otherDateObj.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        if (diffDays <= 2) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Minimum 2 days gap required. Test "${other.name}" on ${other.date} is too close.`,
-            },
-            { status: 409 }
-          );
-        }
-      }
-    }
-
-    // If teacher or subject is changing, validate teacher-subject assignment
-    const newTeacherId = teacherId || existingTest.teacherId;
-    const newSubjectId = subjectId || existingTest.subjectId;
-
-    if (teacherId || subjectId) {
-      const teacherSubject = await db.teacherSubject.findUnique({
-        where: {
-          teacherId_subjectId: {
-            teacherId: newTeacherId,
-            subjectId: newSubjectId,
-          },
-        },
-      });
-
-      if (!teacherSubject) {
-        return NextResponse.json(
-          { success: false, message: 'Teacher is not assigned to this subject' },
-          { status: 400 }
-        );
-      }
-    }
-
-    const updateData: {
-      name?: string;
-      classId?: string;
-      subjectId?: string;
-      teacherId?: string;
-      date?: string;
-      maxMarks?: number;
-    } = {};
-    if (name) updateData.name = name;
-    if (classId) updateData.classId = classId;
-    if (subjectId) updateData.subjectId = subjectId;
-    if (teacherId) updateData.teacherId = teacherId;
-    if (date) updateData.date = date;
-    if (maxMarks) updateData.maxMarks = parseInt(String(maxMarks));
-
-    const test = await db.test.update({
-      where: { id },
-      data: updateData,
-      include: {
-        subject: {
-          select: { id: true, name: true },
-        },
-        class: {
-          select: { id: true, name: true },
-        },
-        teacher: {
-          include: {
-            user: {
-              select: { id: true, name: true },
-            },
-          },
-        },
-      },
-    });
-
-    const today = new Date().toISOString().split('T')[0];
-    let status: string;
-    if (test.date === today) {
-      status = 'Today';
-    } else if (test.date > today) {
-      status = 'Upcoming';
-    } else {
-      status = 'Completed';
-    }
-
-    return NextResponse.json({
-      success: true,
-      test: {
-        id: test.id,
-        name: test.name,
-        date: test.date,
-        maxMarks: test.maxMarks,
-        status,
-        subject: test.subject,
-        class: test.class,
-        teacher: {
-          id: test.teacher.id,
-          name: test.teacher.user.name,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('Update test error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -258,27 +75,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-
-    const test = await db.test.findUnique({
-      where: { id },
-    });
-
-    if (!test) {
-      return NextResponse.json(
-        { success: false, message: 'Test not found' },
-        { status: 404 }
-      );
-    }
-
-    // Cascade will handle marks deletion
-    await db.test.delete({ where: { id } });
-
+    await adminTestsService.delete(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete test error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('not found') ? 404 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }
