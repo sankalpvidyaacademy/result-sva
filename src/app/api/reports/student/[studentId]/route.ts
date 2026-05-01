@@ -33,13 +33,17 @@ export async function GET(
     const student = docToObj<StudentDoc>(studentSnap);
 
     // Get subjects for this class
-    const subjectsSnap = await db.collection('subjects').where('classId', '==', student.classId).orderBy('name').get();
+    const subjectsSnap = await db.collection('subjects').where('classId', '==', student.classId).get();
     const subjects = queryToObj<SubjectDoc>(subjectsSnap);
+    // Sort by name in JS to avoid Firestore composite index requirement
+    subjects.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // Get completed tests, filtered by date range
     const today = new Date().toISOString().split('T')[0];
-    const testsSnap = await db.collection('tests').where('classId', '==', student.classId).orderBy('date', 'asc').get();
+    const testsSnap = await db.collection('tests').where('classId', '==', student.classId).get();
     let tests = queryToObj<TestDoc>(testsSnap).filter(t => t.date <= today);
+    // Sort by date ascending in JS to avoid Firestore composite index requirement
+    tests.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     // Apply date filter
     if (fromDate) tests = tests.filter(t => t.date >= fromDate);
@@ -179,7 +183,7 @@ export async function GET(
   } catch (error) {
     console.error('Get student report error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

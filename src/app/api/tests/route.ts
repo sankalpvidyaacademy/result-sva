@@ -12,15 +12,19 @@ export async function GET(request: NextRequest) {
 
     let testsSnap;
     if (classId) {
-      testsSnap = await db.collection('tests').where('classId', '==', classId).orderBy('date', 'desc').get();
+      testsSnap = await db.collection('tests').where('classId', '==', classId).get();
     } else if (teacherId) {
-      testsSnap = await db.collection('tests').where('teacherId', '==', teacherId).orderBy('date', 'desc').get();
+      testsSnap = await db.collection('tests').where('teacherId', '==', teacherId).get();
     } else {
       testsSnap = await db.collection('tests').orderBy('date', 'desc').get();
     }
 
     const today = new Date().toISOString().split('T')[0];
     const tests = queryToObj<TestDoc>(testsSnap);
+    // Sort by date descending in JS to avoid Firestore composite index requirement
+    if (classId || teacherId) {
+      tests.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }
 
     const formatted = await Promise.all(tests.map(async test => {
       let status: string;
@@ -52,7 +56,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Get tests error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

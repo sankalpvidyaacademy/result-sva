@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     let marksSnap;
     if (testId) {
-      marksSnap = await db.collection('marks').where('testId', '==', testId).orderBy('studentRollNo').get();
+      marksSnap = await db.collection('marks').where('testId', '==', testId).get();
     } else {
       marksSnap = await db.collection('marks').where('studentId', '==', studentId!).get();
     }
@@ -45,12 +45,16 @@ export async function GET(request: NextRequest) {
         },
       };
     });
+    // Sort by studentRollNo in JS to avoid Firestore composite index requirement
+    if (testId) {
+      formatted.sort((a, b) => (a.student.rollNo || '').localeCompare(b.student.rollNo || '', undefined, { numeric: true }));
+    }
 
     return NextResponse.json({ success: true, marks: formatted });
   } catch (error) {
     console.error('Get marks error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

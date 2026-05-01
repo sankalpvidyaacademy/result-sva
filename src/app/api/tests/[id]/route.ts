@@ -32,7 +32,7 @@ export async function GET(
     }
 
     // Get marks for this test
-    const marksSnap = await db.collection('marks').where('testId', '==', id).orderBy('studentRollNo').get();
+    const marksSnap = await db.collection('marks').where('testId', '==', id).get();
     const marks = marksSnap.docs.map(d => {
       const m = docToObj<MarksDoc>(d);
       return {
@@ -45,6 +45,8 @@ export async function GET(
         },
       };
     });
+    // Sort by studentRollNo in JS to avoid Firestore composite index requirement
+    marks.sort((a, b) => (a.student.rollNo || '').localeCompare(b.student.rollNo || '', undefined, { numeric: true }));
 
     const formatted = {
       id: test.id,
@@ -63,7 +65,7 @@ export async function GET(
   } catch (error) {
     console.error('Get test error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }
@@ -124,7 +126,7 @@ export async function PUT(
   } catch (error) {
     console.error('Update test error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

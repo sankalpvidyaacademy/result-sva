@@ -19,13 +19,17 @@ export async function GET(
     const student = docToObj<StudentDoc>(studentSnap);
 
     // Get subjects for this class
-    const subjectsSnap = await db.collection('subjects').where('classId', '==', student.classId).orderBy('name').get();
+    const subjectsSnap = await db.collection('subjects').where('classId', '==', student.classId).get();
     const subjects = queryToObj<SubjectDoc>(subjectsSnap);
+    // Sort by name in JS to avoid Firestore composite index requirement
+    subjects.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // Get completed tests for this class
     const today = new Date().toISOString().split('T')[0];
-    const testsSnap = await db.collection('tests').where('classId', '==', student.classId).orderBy('date', 'asc').get();
+    const testsSnap = await db.collection('tests').where('classId', '==', student.classId).get();
     const allTests = queryToObj<TestDoc>(testsSnap);
+    // Sort by date ascending in JS to avoid Firestore composite index requirement
+    allTests.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const tests = allTests.filter(t => t.date <= today);
 
     // Get student's marks
@@ -164,7 +168,7 @@ export async function GET(
   } catch (error) {
     console.error('Get student results error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

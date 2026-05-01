@@ -194,12 +194,14 @@ export const subjectsService = {
   getByClass: async (classId?: string) => {
     let q
     if (classId) {
-      q = query(collection(firestore, 'subjects'), where('classId', '==', classId), orderBy('name'))
+      q = query(collection(firestore, 'subjects'), where('classId', '==', classId))
     } else {
       q = query(collection(firestore, 'subjects'), orderBy('name'))
     }
     const snap = await getDocs(q)
-    return snap.docs.map(d => docToObj<SubjectDoc>(d))
+    const results = snap.docs.map(d => docToObj<SubjectDoc>(d))
+    if (classId) results.sort((a, b) => a.name.localeCompare(b.name))
+    return results
   },
 
   getAll: async () => {
@@ -220,12 +222,14 @@ export const studentsService = {
   getAll: async (classId?: string) => {
     let q
     if (classId) {
-      q = query(collection(firestore, 'students'), where('classId', '==', classId), orderBy('rollNo'))
+      q = query(collection(firestore, 'students'), where('classId', '==', classId))
     } else {
       q = query(collection(firestore, 'students'), orderBy('rollNo'))
     }
     const snap = await getDocs(q)
-    return snap.docs.map(d => docToObj<StudentDoc>(d))
+    const results = snap.docs.map(d => docToObj<StudentDoc>(d))
+    if (classId) results.sort((a, b) => a.rollNo.localeCompare(b.rollNo))
+    return results
   },
 
   getById: async (id: string) => {
@@ -556,15 +560,24 @@ export const teachersService = {
 export const testsService = {
   getAll: async (filters?: { classId?: string; teacherId?: string }) => {
     let q
+    let needsDateSort = false
     if (filters?.classId) {
-      q = query(collection(firestore, 'tests'), where('classId', '==', filters.classId), orderBy('date', 'desc'))
+      q = query(collection(firestore, 'tests'), where('classId', '==', filters.classId))
+      needsDateSort = true
     } else if (filters?.teacherId) {
-      q = query(collection(firestore, 'tests'), where('teacherId', '==', filters.teacherId), orderBy('date', 'desc'))
+      q = query(collection(firestore, 'tests'), where('teacherId', '==', filters.teacherId))
+      needsDateSort = true
     } else {
       q = query(collection(firestore, 'tests'), orderBy('date', 'desc'))
     }
     const snap = await getDocs(q)
     const today = new Date().toISOString().split('T')[0]
+
+    if (needsDateSort) snap.docs.sort((a, b) => {
+      const dateA = (a.data() as Record<string, unknown>).date as string
+      const dateB = (b.data() as Record<string, unknown>).date as string
+      return dateB.localeCompare(dateA)
+    })
 
     return snap.docs.map(d => {
       const test = docToObj<TestDoc>(d)
@@ -602,7 +615,7 @@ export const testsService = {
     }
 
     // Get marks for this test
-    const marksQuery = query(collection(firestore, 'marks'), where('testId', '==', id), orderBy('studentRollNo'))
+    const marksQuery = query(collection(firestore, 'marks'), where('testId', '==', id))
     const marksSnap = await getDocs(marksQuery)
     const marks = marksSnap.docs.map(d => {
       const m = docToObj<MarksDoc>(d)
@@ -615,7 +628,7 @@ export const testsService = {
           name: m.studentName,
         },
       }
-    })
+    }).sort((a, b) => a.student.rollNo.localeCompare(b.student.rollNo))
 
     return {
       ...test,
@@ -741,7 +754,7 @@ export const testsService = {
 // ===== MARKS SERVICE =====
 export const marksService = {
   getByTest: async (testId: string) => {
-    const q = query(collection(firestore, 'marks'), where('testId', '==', testId), orderBy('studentRollNo'))
+    const q = query(collection(firestore, 'marks'), where('testId', '==', testId))
     const snap = await getDocs(q)
     return snap.docs.map(d => {
       const m = docToObj<MarksDoc>(d)
@@ -756,7 +769,7 @@ export const marksService = {
           class: { id: m.testInfo.classId, name: m.testInfo.className },
         },
       }
-    })
+    }).sort((a, b) => a.student.rollNo.localeCompare(b.student.rollNo))
   },
 
   getByStudent: async (studentId: string) => {
@@ -888,15 +901,15 @@ export const resultsService = {
     const classData = docToObj<ClassDoc>(classSnap)
 
     // Get subjects for this class
-    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', classId), orderBy('name'))
+    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', classId))
     const subjectsSnap = await getDocs(subjectsQuery)
-    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d))
+    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d)).sort((a, b) => a.name.localeCompare(b.name))
 
     // Get completed tests for this class
     const today = new Date().toISOString().split('T')[0]
-    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', classId), orderBy('date', 'asc'))
+    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', classId))
     const testsSnap = await getDocs(testsQuery)
-    const allTests = testsSnap.docs.map(d => docToObj<TestDoc>(d))
+    const allTests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).sort((a, b) => a.date.localeCompare(b.date))
     const tests = allTests.filter(t => t.date <= today)
 
     if (tests.length === 0) {
@@ -912,9 +925,9 @@ export const resultsService = {
     const totalMaxMarks = tests.reduce((sum, t) => sum + t.maxMarks, 0)
 
     // Get all students in the class
-    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId), orderBy('rollNo'))
+    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId))
     const studentsSnap = await getDocs(studentsQuery)
-    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(studentsSnap.docs[studentsSnap.docs.indexOf(d)]))
+    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(d)).sort((a, b) => a.rollNo.localeCompare(b.rollNo))
 
     // Get all marks for these tests
     const allMarks: MarksDoc[] = []
@@ -1012,15 +1025,15 @@ export const resultsService = {
     const student = docToObj<StudentDoc>(studentSnap)
 
     // Get subjects for this class
-    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', student.classId), orderBy('name'))
+    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', student.classId))
     const subjectsSnap = await getDocs(subjectsQuery)
-    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d))
+    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d)).sort((a, b) => a.name.localeCompare(b.name))
 
     // Get completed tests for this class
     const today = new Date().toISOString().split('T')[0]
-    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', student.classId), orderBy('date', 'asc'))
+    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', student.classId))
     const testsSnap = await getDocs(testsQuery)
-    const allTests = testsSnap.docs.map(d => docToObj<TestDoc>(d))
+    const allTests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).sort((a, b) => a.date.localeCompare(b.date))
     const tests = allTests.filter(t => t.date <= today)
 
     // Get student's marks
@@ -1183,15 +1196,15 @@ export const reportsService = {
     const student = docToObj<StudentDoc>(studentSnap)
 
     // Get subjects for this class
-    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', student.classId), orderBy('name'))
+    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', student.classId))
     const subjectsSnap = await getDocs(subjectsQuery)
-    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d))
+    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d)).sort((a, b) => a.name.localeCompare(b.name))
 
     // Get completed tests, filtered by date range
     const today = new Date().toISOString().split('T')[0]
-    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', student.classId), orderBy('date', 'asc'))
+    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', student.classId))
     const testsSnap = await getDocs(testsQuery)
-    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).filter(t => t.date <= today)
+    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).sort((a, b) => a.date.localeCompare(b.date)).filter(t => t.date <= today)
 
     // Apply date filter
     if (dateRange?.fromDate) {
@@ -1342,15 +1355,15 @@ export const reportsService = {
     const classData = docToObj<ClassDoc>(classSnap)
 
     // Get subjects
-    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', classId), orderBy('name'))
+    const subjectsQuery = query(collection(firestore, 'subjects'), where('classId', '==', classId))
     const subjectsSnap = await getDocs(subjectsQuery)
-    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d))
+    const subjects = subjectsSnap.docs.map(d => docToObj<SubjectDoc>(d)).sort((a, b) => a.name.localeCompare(b.name))
 
     // Get completed tests, filtered by date range
     const today = new Date().toISOString().split('T')[0]
-    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', classId), orderBy('date', 'asc'))
+    const testsQuery = query(collection(firestore, 'tests'), where('classId', '==', classId))
     const testsSnap = await getDocs(testsQuery)
-    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).filter(t => t.date <= today)
+    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).sort((a, b) => a.date.localeCompare(b.date)).filter(t => t.date <= today)
 
     if (dateRange?.fromDate) {
       tests = tests.filter(t => t.date >= dateRange.fromDate!)
@@ -1362,9 +1375,9 @@ export const reportsService = {
     const totalMaxMarks = tests.reduce((sum, t) => sum + t.maxMarks, 0)
 
     // Get all students in class
-    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId), orderBy('rollNo'))
+    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', classId))
     const studentsSnap = await getDocs(studentsQuery)
-    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(d))
+    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(d)).sort((a, b) => a.rollNo.localeCompare(b.rollNo))
 
     // Get all marks for tests
     const allMarks: MarksDoc[] = []
@@ -1492,9 +1505,9 @@ export const reportsService = {
 
     // Get tests for this subject, filtered by date range
     const today = new Date().toISOString().split('T')[0]
-    const testsQuery = query(collection(firestore, 'tests'), where('subjectId', '==', subjectId), orderBy('date', 'asc'))
+    const testsQuery = query(collection(firestore, 'tests'), where('subjectId', '==', subjectId))
     const testsSnap = await getDocs(testsQuery)
-    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).filter(t => t.date <= today)
+    let tests = testsSnap.docs.map(d => docToObj<TestDoc>(d)).sort((a, b) => a.date.localeCompare(b.date)).filter(t => t.date <= today)
 
     if (dateRange?.fromDate) {
       tests = tests.filter(t => t.date >= dateRange.fromDate!)
@@ -1506,9 +1519,9 @@ export const reportsService = {
     const totalMaxMarks = tests.reduce((sum, t) => sum + t.maxMarks, 0)
 
     // Get all students in the class
-    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', subject.classId), orderBy('rollNo'))
+    const studentsQuery = query(collection(firestore, 'students'), where('classId', '==', subject.classId))
     const studentsSnap = await getDocs(studentsQuery)
-    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(d))
+    const students = studentsSnap.docs.map(d => docToObj<StudentDoc>(d)).sort((a, b) => a.rollNo.localeCompare(b.rollNo))
 
     // Get marks for all tests
     const testMarks: Record<string, MarksDoc[]> = {}
@@ -1654,12 +1667,14 @@ export const realtimeService = {
   ): Unsubscribe => {
     let q
     if (classId) {
-      q = query(collection(firestore, 'students'), where('classId', '==', classId), orderBy('rollNo'))
+      q = query(collection(firestore, 'students'), where('classId', '==', classId))
     } else {
       q = query(collection(firestore, 'students'), orderBy('rollNo'))
     }
     return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => docToObj<StudentDoc>(d)))
+      const results = snap.docs.map(d => docToObj<StudentDoc>(d))
+      if (classId) results.sort((a, b) => a.rollNo.localeCompare(b.rollNo))
+      callback(results)
     })
   },
 
@@ -1680,14 +1695,16 @@ export const realtimeService = {
   ): Unsubscribe => {
     let q
     if (filters?.classId) {
-      q = query(collection(firestore, 'tests'), where('classId', '==', filters.classId), orderBy('date', 'desc'))
+      q = query(collection(firestore, 'tests'), where('classId', '==', filters.classId))
     } else if (filters?.teacherId) {
-      q = query(collection(firestore, 'tests'), where('teacherId', '==', filters.teacherId), orderBy('date', 'desc'))
+      q = query(collection(firestore, 'tests'), where('teacherId', '==', filters.teacherId))
     } else {
       q = query(collection(firestore, 'tests'), orderBy('date', 'desc'))
     }
     return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => docToObj<TestDoc>(d)))
+      const results = snap.docs.map(d => docToObj<TestDoc>(d))
+      if (filters?.classId || filters?.teacherId) results.sort((a, b) => b.date.localeCompare(a.date))
+      callback(results)
     })
   },
 
@@ -1707,9 +1724,9 @@ export const realtimeService = {
     testId: string,
     callback: (data: MarksDoc[]) => void
   ): Unsubscribe => {
-    const q = query(collection(firestore, 'marks'), where('testId', '==', testId), orderBy('studentRollNo'))
+    const q = query(collection(firestore, 'marks'), where('testId', '==', testId))
     return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => docToObj<MarksDoc>(d)))
+      callback(snap.docs.map(d => docToObj<MarksDoc>(d)).sort((a, b) => a.studentRollNo.localeCompare(b.studentRollNo)))
     })
   },
 
@@ -1730,12 +1747,14 @@ export const realtimeService = {
   ): Unsubscribe => {
     let q
     if (classId) {
-      q = query(collection(firestore, 'subjects'), where('classId', '==', classId), orderBy('name'))
+      q = query(collection(firestore, 'subjects'), where('classId', '==', classId))
     } else {
       q = query(collection(firestore, 'subjects'), orderBy('name'))
     }
     return onSnapshot(q, (snap) => {
-      callback(snap.docs.map(d => docToObj<SubjectDoc>(d)))
+      const results = snap.docs.map(d => docToObj<SubjectDoc>(d))
+      if (classId) results.sort((a, b) => a.name.localeCompare(b.name))
+      callback(results)
     })
   },
 }

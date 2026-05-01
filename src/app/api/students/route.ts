@@ -12,12 +12,16 @@ export async function GET(request: NextRequest) {
     // Get students
     let studentsSnap;
     if (classId) {
-      studentsSnap = await db.collection('students').where('classId', '==', classId).orderBy('rollNo').get();
+      studentsSnap = await db.collection('students').where('classId', '==', classId).get();
     } else {
       studentsSnap = await db.collection('students').orderBy('rollNo').get();
     }
 
     const students = queryToObj<StudentDoc>(studentsSnap);
+    // Sort by rollNo in JS to avoid Firestore composite index requirement
+    if (classId) {
+      students.sort((a, b) => (a.rollNo || '').localeCompare(b.rollNo || '', undefined, { numeric: true }));
+    }
 
     // Get all subjects for resolving names
     const subjectsSnap = await db.collection('subjects').orderBy('name').get();
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Get students error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

@@ -33,13 +33,17 @@ export async function GET(
     const classData = docToObj<ClassDoc>(classSnap);
 
     // Get subjects
-    const subjectsSnap = await db.collection('subjects').where('classId', '==', classId).orderBy('name').get();
+    const subjectsSnap = await db.collection('subjects').where('classId', '==', classId).get();
     const subjects = queryToObj<SubjectDoc>(subjectsSnap);
+    // Sort by name in JS to avoid Firestore composite index requirement
+    subjects.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // Get completed tests, filtered by date range
     const today = new Date().toISOString().split('T')[0];
-    const testsSnap = await db.collection('tests').where('classId', '==', classId).orderBy('date', 'asc').get();
+    const testsSnap = await db.collection('tests').where('classId', '==', classId).get();
     let tests = queryToObj<TestDoc>(testsSnap).filter(t => t.date <= today);
+    // Sort by date ascending in JS to avoid Firestore composite index requirement
+    tests.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     if (fromDate) tests = tests.filter(t => t.date >= fromDate);
     if (toDate) tests = tests.filter(t => t.date <= toDate);
@@ -47,8 +51,10 @@ export async function GET(
     const totalMaxMarks = tests.reduce((sum, t) => sum + t.maxMarks, 0);
 
     // Get students
-    const studentsSnap = await db.collection('students').where('classId', '==', classId).orderBy('rollNo').get();
+    const studentsSnap = await db.collection('students').where('classId', '==', classId).get();
     const students = queryToObj<StudentDoc>(studentsSnap);
+    // Sort by rollNo in JS to avoid Firestore composite index requirement
+    students.sort((a, b) => (a.rollNo || '').localeCompare(b.rollNo || '', undefined, { numeric: true }));
 
     // Get all marks for tests
     const allMarks: MarksDoc[] = [];
@@ -169,7 +175,7 @@ export async function GET(
   } catch (error) {
     console.error('Get class report error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error' },
+      { success: false, message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

@@ -7,8 +7,8 @@
 
 'use client'
 
-import { initializeApp, getApps } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
+import { getFirestore, type Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -23,8 +23,8 @@ const firebaseConfig = {
 export const isFirebaseConfigured = !!(firebaseConfig.apiKey && firebaseConfig.projectId)
 
 // Initialize Firebase only if configured (prevent re-initialization in dev mode)
-let app
-let firestoreDb: ReturnType<typeof getFirestore> | null = null
+let app: FirebaseApp | null = null
+let firestoreDb: Firestore | null = null
 
 if (isFirebaseConfigured) {
   try {
